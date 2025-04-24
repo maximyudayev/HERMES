@@ -4,6 +4,7 @@ subject_id    : 0 # UID of the subject
 trial_id      : 0 # UID of the trial
 duration_s    : null
 
+<<<<<<< HEAD
 print_status  : True
 print_debug   : True
 
@@ -18,6 +19,17 @@ is_remote_kill: False
 remote_kill_ip: null
 
 
+=======
+host_ip       : "127.0.0.1"
+remote_publisher_ips: []
+remote_subscriber_ips: []
+is_expose_to_remote_sub : False
+is_remote_kill : False
+
+print_status  : True
+print_debug   : True
+
+>>>>>>> d419dbe (modified code for vicon)
 logging_spec:
   stream_period_s     : 10
   
@@ -31,16 +43,55 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
+<<<<<<< HEAD
   video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
   video_codec_num_cpu : 1
+=======
+  video_codec         : 'h264_qsv'
+  video_codec_num_cpu : 1
+  video_pix_format    : 'nv12'
+>>>>>>> d419dbe (modified code for vicon)
 
   audio_format        : "wav" # currently only supports WAV
 
 
 producer_specs:
+<<<<<<< HEAD
   - class: "TmsiStreamer"
+=======
+    - class: "ViconStreamer"
+      device_mapping: 
+        0 : 0
+        1 : 1
+        2 : 2
+        3 : 3
+        4 : 4
+        5 : 5
+        6 : 6
+        7 : 7
+        8 : 8
+        9 : 9
+        10 : 10
+        11 : 11
+        12 : 12
+        13 : 13
+        14 : 14
+        15 : 15   
+    - class: "CameraStreamer"
+      camera_mapping: # map camera names (usable as device names in the HDF5 file) to capture device indexes
+        basler_north : "40478064"
+      fps: 30
+      resolution:
+        - 1440
+        - 2560
+      camera_config_filepath: "resources/AidFOG/pylon_30fps_2K.pfs" 
+>>>>>>> d419dbe (modified code for vicon)
    
 
 consumer_specs: []
 
+<<<<<<< HEAD
 pipeline_specs: []
+=======
+pipeline_specs: []
+>>>>>>> d419dbe (modified code for vicon)

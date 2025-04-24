@@ -454,5 +454,29 @@
       "subProcess": true,
       "justMyCode": false
     },
+    {
+      "name": "RevalExo Vicon Machine",
+			"type": "debugpy",
+			"request": "launch",
+      "cwd": "${workspaceFolder}",
+			"program": "main.py",
+			"args": [
+        "--experiment", "project=Tests", "type=Awinda", "trial=1",
+				"--host_ip", "127.0.0.1", "--is_master",
+				"--logging_spec", "stream_period_s=30", "stream_hdf5", "video_codec_config_filepath=resources/codecs/backpack_h264_qsv.yml",
+				"--producer_specs",
+				"class=AwindaStreamer",
+          "device_mapping=\"pelvis:00B4D3E4;upper_leg_right:00B4D3D7;lower_leg_right:00B4D3E2;foot_right:00B4D3DD;upper_leg_left:00B4D3E7;lower_leg_left:00B4D3D4;foot_left:00B4D3D8\"",
+          "num_joints=7",
+          "sampling_rate_hz=100",
+          "radio_channel=15",
+      ],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal",
+      "subProcess": true,
+      "justMyCode": false
+    },
   ]
 }
