@@ -66,29 +66,26 @@ class CameraStream(Stream):
                       data_notes=self._data_notes[camera_id]["frame"],
                       timesteps_before_solidified=self._timesteps_before_solidified)
       self.add_stream(device_name=camera_id,
-                      stream_name='frame_timestamp',
+                      stream_name='timestamp',
+                      is_video=False,
                       data_type='float64',
                       sample_size=[1],
                       sampling_rate_hz=fps,
-                      data_notes=self._data_notes[camera_id]["frame_timestamp"])
+                      data_notes=self._data_notes[camera_id]["timestamp"])
       self.add_stream(device_name=camera_id,
-                      stream_name='frame_index',
+                      stream_name='system_time',
+                      is_video=False,
                       data_type='float64',
                       sample_size=[1],
                       sampling_rate_hz=fps,
-                      data_notes=self._data_notes[camera_id]["frame_index"])
+                      data_notes=None)
       self.add_stream(device_name=camera_id,
-                      stream_name='frame_sequence_id',
+                      stream_name='frame_sequence',
+                      is_video=False,
                       data_type='float64',
                       sample_size=[1],
                       sampling_rate_hz=fps,
-                      data_notes=self._data_notes[camera_id]["frame_sequence_id"])
-      self.add_stream(device_name=camera_id,
-                      stream_name='toa_s',
-                      data_type='float64',
-                      sample_size=[1],
-                      sampling_rate_hz=fps,
-                      data_notes=self._data_notes[camera_id]['toa_s'])
+                      data_notes=self._data_notes[camera_id]["frame_sequence"])
 
 
   def get_fps(self) -> dict[str, float | None]:

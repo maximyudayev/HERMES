@@ -55,19 +55,24 @@ class ViconStream(Stream):
 
     self.add_stream(device_name='vicon-data',
                     stream_name='emg',
-                    data_type='float32',
-                    sample_size=(self._num_devices,),
+                    data_type='float64',
+                    sample_size=(self._num_devices * sampling_rate_hz//update_interval_ms),
                     sampling_rate_hz=sampling_rate_hz,
                     is_measure_rate_hz=True)
     self.add_stream(device_name='vicon-data',
                     stream_name='counter',
-                    data_type='float32',
-                    sample_size=(1,),
+                    data_type='int64',
+                    sample_size=(1),
                     sampling_rate_hz=sampling_rate_hz)
     self.add_stream(device_name='vicon-data',
                     stream_name='latency',
-                    data_type='float32',
-                    sample_size=(1,),
+                    data_type='float64',
+                    sample_size=(1),
+                    sampling_rate_hz=sampling_rate_hz)
+    self.add_stream(device_name='vicon-data',
+                    stream_name='timestamp',
+                    data_type='float64',
+                    sample_size=(1),
                     sampling_rate_hz=sampling_rate_hz)
 
 

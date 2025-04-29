@@ -92,6 +92,13 @@ class ViconStreamer(Producer):
 
     # Enable data output.
     self._client.EnableDeviceData()
+    # self._client.EnableCentroidData()
+
+    self._client.DisableSegmentData()
+    self._client.DisableMarkerData()
+    self._client.DisableUnlabeledMarkerData()
+    self._client.DisableMarkerRayData()
+    self._client.DisableCentroidData()
 
     # Set server push mode,
     #  server pushes frames to client buffer, TCP/IP buffer, then server buffer.
@@ -103,7 +110,7 @@ class ViconStreamer(Producer):
     while not is_has_frame:
       try:
         time.sleep(1.0)
-        if self._client.GetFrame():
+        if self._client.GetFrame() and self._client.GetDeviceNames():
           is_has_frame = True
       except ViconDataStream.DataStreamException as e:
         attempts -= 1
