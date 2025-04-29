@@ -24,7 +24,7 @@ logging_spec:
   
   stream_hdf5         : True
   stream_csv          : False
-  # stream_video        : True
+  stream_video        : True
   stream_audio        : False
 
   dump_csv            : False
@@ -58,14 +58,15 @@ producer_specs:
         13 : 13
         14 : 14
         15 : 15   
-    # - class: "CameraStreamer"
-    #   camera_mapping: # map camera names (usable as device names in the HDF5 file) to capture device indexes
-    #     basler_north : "40478064"
-    #   fps: 30
-    #   resolution:
-    #     - 1440
-    #     - 2560
-    #   camera_config_filepath: "resources/AidFOG/pylon_30fps_2K.pfs" 
+    - class: "CameraStreamer"
+      camera_mapping: # map camera names (usable as device names in the HDF5 file) to capture device indexes
+        basler_north : "40478064"
+      fps: 30
+      resolution:
+        - 1440
+        - 2560
+      camera_config_filepath: "resources/AidFOG/pylon_30fps_2K.pfs" 
+    - class: "TmsiStreamer"
    
 
 consumer_specs: []
