@@ -36,6 +36,7 @@ print_debug   : True
 
 
 host_ip : "127.0.0.1"
+is_master_broker: True
 
 remote_publisher_ips: []
 remote_subscriber_ips: []
@@ -45,7 +46,7 @@ remote_kill_ip: null
 
 
 logging_spec:
-  stream_period_s     : 30
+  stream_period_s     : 10
   
   stream_hdf5         : True
   stream_csv          : False
@@ -57,9 +58,8 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec         : 'h264_qsv'
+  video_codec_config_filepath : "resources/codecs/h264_amf.yml" 
   video_codec_num_cpu : 1
-  video_pix_format    : 'nv12'
 
   audio_format        : "wav" # currently only supports WAV
 
@@ -69,7 +69,7 @@ producer_specs:
   - class: "EyeStreamer"
     pupil_capture_ip        : "localhost"
     pupil_capture_port      : "50020"
-    video_image_format      : "bgr"
+    video_image_format      : "jpeg"
     gaze_estimate_stale_s   : 0.2
     is_binocular            : True # uses both eyes for gaze data and for video
     is_stream_video_world   : True

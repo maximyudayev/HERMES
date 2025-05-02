@@ -28,6 +28,7 @@
 import time
 from typing import Callable
 from utils.sensor_utils import estimate_transmission_delay
+from utils.time_utils import get_time
 
 
 class DelayEstimator:
@@ -42,7 +43,7 @@ class DelayEstimator:
                publish_fn: Callable):
     while self._is_continue:
       delay_s: float = estimate_transmission_delay(ping_fn=ping_fn)
-      time_s = time.time()
+      time_s = get_time()
       publish_fn(time_s, delay_s)
       time.sleep(self._sample_period_s)
 

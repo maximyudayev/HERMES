@@ -83,6 +83,10 @@ class NodeInterface(ABC):
   def _trigger_stop(self) -> None:
     pass
 
+  @abstractmethod
+  def _on_sync_complete(self) -> None:
+    pass
+
 
 class NodeState(ABC):
   def __init__(self, context: NodeInterface):
@@ -114,7 +118,11 @@ class SyncState(NodeState):
 
   def run(self):
     self._sync.send_multipart([self._context._log_source_tag().encode('utf-8'), CMD_HELLO.encode('utf-8')])
-    self._sync.recv()
+    host, cmd = self._sync.recv_multipart()
+    print("%s received %s from %s." % (self._context._log_source_tag(),
+                                       cmd.decode('utf-8'),
+                                       host.decode('utf-8')),
+                                       flush=True)
     self._context._set_state(RunningState(self._context))
 
 
@@ -122,6 +130,7 @@ class RunningState(NodeState):
   def __init__(self, context):
     super().__init__(context)
     self._context._activate_kill_poller()
+    self._context._on_sync_complete()
 
   def run(self):
     poll_res: tuple[list[zmq.SyncSocket], list[int]] = self._context._poll()
@@ -185,20 +194,10 @@ class Node(NodeInterface):
 
   # Nodes are callable with FSM as entry-point.
   def __call__(self):
-    try:
-      while self._state.is_continue():
-        self._state.run()
-    except KeyboardInterrupt: # catches the first CLI Ctrl+C interrupt
-      print("Keyboard interrupt signalled, %s quitting..."%self._log_source_tag(), flush=True)
-      self._state.kill()
-    finally:
-      while self._state.is_continue(): # ignores follow-up Ctrl+C interrupts while the program is wrapping up
-        try:
-          self._state.run()
-        except KeyboardInterrupt:
-          print("%s safely closing and saving, have some patience..."%self._log_source_tag(), flush=True)
-      self._cleanup()
-      print("%s exited, goodbye <3"%self._log_source_tag(), flush=True)
+    while self._state.is_continue():
+      self._state.run()
+    self._cleanup()
+    print("%s exited, goodbye <3"%self._log_source_tag(), flush=True)
 
 
   # FSM transition.

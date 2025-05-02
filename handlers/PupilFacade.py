@@ -29,12 +29,12 @@ from collections import OrderedDict
 import time
 from typing import Callable
 
-import cv2
 import msgpack
 import numpy as np
 import zmq
 
 from utils.sensor_utils import estimate_transmission_delay
+from utils.time_utils import get_time
 
 
 class PupilFacade:
@@ -63,6 +63,7 @@ class PupilFacade:
     self._start_index_world = None
     self._previous_index_eye = [0] * (2 if is_binocular else 1)
     self._previous_index_world = 0
+    self._is_keep_data = False
 
     # Connect to the Pupil Capture socket.
     self._zmq_context = zmq.Context.instance()
@@ -91,6 +92,10 @@ class PupilFacade:
     for t in self._topics: self._receiver.subscribe(t)
 
 
+  def keep_data(self) -> None:
+    self._is_keep_data = True
+
+
   # Receive data and return a parsed dictionary.
   # The data dict will have keys 'gaze', 'pupil', 'video-world', 'video-worldGaze', and 'video-eye'
   #  where each will map to a dict or to None if it was not applicable.
@@ -98,7 +103,7 @@ class PupilFacade:
   #   Each sub-dict has keys that are stream names.
   def process_data(self) -> tuple[float, OrderedDict]:
     data = self._receiver.recv_multipart()
-    time_s = time.time()
+    time_s = get_time()
     device_time_s = self._get_device_time()
 
     gaze_items = None
@@ -107,130 +112,121 @@ class PupilFacade:
     blinks_items = None
     video_world_items = None
     video_eye_items = None
-    time_items = [
-      ('device_time_s', device_time_s)
-    ]
+    time_items = None
 
     topic = data[0].decode('utf-8')
 
-    # Process gaze/pupil data
-    # Note it works for both, mono- and binocular gaze data
-    if topic in ['gaze.2d.0.', 'gaze.3d.0.','gaze.2d.01.', 'gaze.3d.01.']: # former two - monocular, latter two - binocular 
-      payload = msgpack.loads(data[1])
-      pupil_data = payload['base_data'] # pupil detection on which the gaze detection was based (just use the first one for now if there were multiple)
-      # Record data common to both 2D and 3D formats
-      gaze_items = [
-        ('timestamp'  , payload['timestamp']),  # seconds from an arbitrary reference time, but should be synced with the video timestamps
-        ('position'   , payload['norm_pos']),   # normalized units [0-1]
-        ('confidence' , payload['confidence']), # gaze confidence [0-1]
+    if self._is_keep_data:
+      time_items = [
+        ('device_time_s', device_time_s)
       ]
-      pupil_items = [
-        ('timestamp'  , [pupil['timestamp'] for pupil in pupil_data]),  # seconds from an arbitrary reference time, but should be synced with the video timestamps
-        ('position'   , [pupil['norm_pos'] for pupil in pupil_data]),   # normalized units [0-1]
-        ('confidence' , [pupil['confidence'] for pupil in pupil_data]), # [0-1]
-        ('diameter'   , [pupil['diameter'] for pupil in pupil_data]),   # 2D image space, unit: pixel
-      ]
-      # Add extra data available for 3D formats
-      if topic in ['gaze.3d.0.', 'gaze.3d.01.']:
-        gaze_items.extend([
-          ('normal_3d' , list(payload['gaze_normal%s_3d' % ('s' if self._is_binocular else '')].values())),    # [(x,y,z),]
-          ('point_3d'  , payload['gaze_point_3d']),     # x,y,z
-          ('eye_center_3d' , list(payload['eye_center%s_3d' % ('s' if self._is_binocular else '')].values())), # [(x,y,z),]
-        ])
-        pupil_items.extend([
-          ('polar_theta' , [pupil['theta'] for pupil in pupil_data]),
-          ('polar_phi'   , [pupil['phi'] for pupil in pupil_data]),
-          ('circle3d_radius' , [pupil['circle_3d']['radius'] for pupil in pupil_data]), # mm in 3D space
-          ('circle3d_center' , [pupil['circle_3d']['center'] for pupil in pupil_data]), # mm in 3D space
-          ('circle3d_normal' , [pupil['circle_3d']['normal'] for pupil in pupil_data]), # mm in 3D space
-          ('diameter3d'      , [pupil['diameter_3d'] for pupil in pupil_data]), # mm in 3D space
-          ('sphere_center' , [pupil['sphere']['center'] for pupil in pupil_data]), # mm in 3D space
-          ('sphere_radius' , [pupil['sphere']['radius'] for pupil in pupil_data]), # mm in 3D space
-          ('projected_sphere_center' , [pupil['projected_sphere']['center'] for pupil in pupil_data]), # pixels in image space
-          ('projected_sphere_axes'   , [pupil['projected_sphere']['axes'] for pupil in pupil_data]),   # pixels in image space
-          ('projected_sphere_angle'  , [pupil['projected_sphere']['angle'] for pupil in pupil_data]),
-        ])
-      # Add extra data available for 2D formats
-      else:
-        pupil_items.extend([
-          ('ellipse_center'   , [pupil['ellipse']['center'] for pupil in pupil_data]), # pixels, in image space
-          ('ellipse_axes'     , [pupil['ellipse']['axes'] for pupil in pupil_data]),   # pixels, in image space
-          ('ellipse_angle_deg', [pupil['ellipse']['angle'] for pupil in pupil_data]),  # degrees
-        ])
+      # Process gaze/pupil data
+      # Note it works for both, mono- and binocular gaze data
+      if topic in ['gaze.2d.0.', 'gaze.3d.0.','gaze.2d.01.', 'gaze.3d.01.']: # former two - monocular, latter two - binocular 
+        payload = msgpack.loads(data[1])
+        pupil_data = payload['base_data'] # pupil detection on which the gaze detection was based (just use the first one for now if there were multiple)
+        # Record data common to both 2D and 3D formats
+        gaze_items = [
+          ('timestamp'  , payload['timestamp']),  # seconds from an arbitrary reference time, but should be synced with the video timestamps
+          ('position'   , payload['norm_pos']),   # normalized units [0-1]
+          ('confidence' , payload['confidence']), # gaze confidence [0-1]
+        ]
+        pupil_items = [
+          ('timestamp'  , [pupil['timestamp'] for pupil in pupil_data]),  # seconds from an arbitrary reference time, but should be synced with the video timestamps
+          ('position'   , [pupil['norm_pos'] for pupil in pupil_data]),   # normalized units [0-1]
+          ('confidence' , [pupil['confidence'] for pupil in pupil_data]), # [0-1]
+          ('diameter'   , [pupil['diameter'] for pupil in pupil_data]),   # 2D image space, unit: pixel
+        ]
+        # Add extra data available for 3D formats
+        if topic in ['gaze.3d.0.', 'gaze.3d.01.']:
+          gaze_items.extend([
+            ('normal_3d' , list(payload['gaze_normal%s_3d' % ('s' if self._is_binocular else '')].values())),    # [(x,y,z),]
+            ('point_3d'  , payload['gaze_point_3d']),     # x,y,z
+            ('eye_center_3d' , list(payload['eye_center%s_3d' % ('s' if self._is_binocular else '')].values())), # [(x,y,z),]
+          ])
+          pupil_items.extend([
+            ('polar_theta' , [pupil['theta'] for pupil in pupil_data]),
+            ('polar_phi'   , [pupil['phi'] for pupil in pupil_data]),
+            ('circle3d_radius' , [pupil['circle_3d']['radius'] for pupil in pupil_data]), # mm in 3D space
+            ('circle3d_center' , [pupil['circle_3d']['center'] for pupil in pupil_data]), # mm in 3D space
+            ('circle3d_normal' , [pupil['circle_3d']['normal'] for pupil in pupil_data]), # mm in 3D space
+            ('diameter3d'      , [pupil['diameter_3d'] for pupil in pupil_data]), # mm in 3D space
+            ('sphere_center' , [pupil['sphere']['center'] for pupil in pupil_data]), # mm in 3D space
+            ('sphere_radius' , [pupil['sphere']['radius'] for pupil in pupil_data]), # mm in 3D space
+            ('projected_sphere_center' , [pupil['projected_sphere']['center'] for pupil in pupil_data]), # pixels in image space
+            ('projected_sphere_axes'   , [pupil['projected_sphere']['axes'] for pupil in pupil_data]),   # pixels in image space
+            ('projected_sphere_angle'  , [pupil['projected_sphere']['angle'] for pupil in pupil_data]),
+          ])
+        # Add extra data available for 2D formats
+        else:
+          pupil_items.extend([
+            ('ellipse_center'   , [pupil['ellipse']['center'] for pupil in pupil_data]), # pixels, in image space
+            ('ellipse_axes'     , [pupil['ellipse']['axes'] for pupil in pupil_data]),   # pixels, in image space
+            ('ellipse_angle_deg', [pupil['ellipse']['angle'] for pupil in pupil_data]),  # degrees
+          ])
 
-    # Process fixations data
-    elif topic == 'fixations':
-      payload = msgpack.load(data[1])
-      fixation_items = [
-        ('id'             , payload['id']),             # int
-        ('timestamp'      , payload['timestamp']),      # float
-        ('norm_pos'       , payload['norm_pos']),       # float[2]
-        ('dispersion'     , payload['dispersion']),     # float
-        ('duration'       , payload['duration']),       # float
-        ('confidence'     , payload['confidence']),     # float
-        ('gaze_point_3d'  , payload['gaze_point_3d']),  # float[3]
-      ]
+      # Process fixations data
+      elif topic == 'fixations':
+        payload = msgpack.load(data[1])
+        fixation_items = [
+          ('id'             , payload['id']),             # int
+          ('timestamp'      , payload['timestamp']),      # float
+          ('norm_pos'       , payload['norm_pos']),       # float[2]
+          ('dispersion'     , payload['dispersion']),     # float
+          ('duration'       , payload['duration']),       # float
+          ('confidence'     , payload['confidence']),     # float
+          ('gaze_point_3d'  , payload['gaze_point_3d']),  # float[3]
+        ]
 
-    # Process blinks data
-    elif topic == 'blinks': 
-      payload = msgpack.loads(data[1])
-      blinks_items = [
-        ('timestamp'  , payload['timestamp']),  # float
-        ('confidence' , payload['confidence']), # float
-      ]
+      # Process blinks data
+      elif topic == 'blinks': 
+        payload = msgpack.loads(data[1])
+        blinks_items = [
+          ('timestamp'  , payload['timestamp']),  # float
+          ('confidence' , payload['confidence']), # float
+        ]
 
-    # Process world video data
-    elif topic == 'frame.world':
-      # Prepare the metadata for the frame.
-      metadata = msgpack.loads(data[1])
-      if self._start_index_world is None: 
-        self._start_index_world = metadata['index']
-        is_keyframe = True
-      else:
-        is_keyframe = (metadata['index'] - self._previous_index_world) > 1 # TODO: not safe against overflow, but uint64
-      self._previous_index_world = metadata['index']
-      pts = metadata['index'] - self._start_index_world
-      # Decode the frame.
-      payload = data[2]
-      img_data = np.frombuffer(payload, dtype=np.uint8)
-      if self._video_image_format == 'bgr':
-        img = img_data.reshape(metadata['height'], metadata['width'], 3)
-      else:
-        img_data = cv2.imdecode(img_data, cv2.IMREAD_COLOR)
-        img = img_data.reshape(metadata['height'], metadata['width'], 3)
-      # Prepare the output for the file writer.
-      video_world_items = [
-        ('frame_timestamp', float(metadata['timestamp'])),
-        ('frame_index', metadata['index']), # world view frame index used for annotation
-        ('frame', (img, is_keyframe, pts)),
-      ]
+      # Process world video data
+      elif topic == 'frame.world':
+        # Prepare the metadata for the frame.
+        metadata = msgpack.loads(data[1])
+        if self._start_index_world is None: 
+          self._start_index_world = metadata['index']
+          is_keyframe = True
+        else:
+          is_keyframe = (metadata['index'] - self._previous_index_world) > 1 # NOTE: not safe against overflow, but uint64
+        self._previous_index_world = metadata['index']
+        pts = metadata['index'] - self._start_index_world
+        # Decode the frame.
+        img_buffer = data[2]
 
-    # Process eye video data
-    elif topic in ['frame.eye.0', 'frame.eye.1']:
-      # Prepare the metadata for the frame.
-      eye_id = int(topic.split('.')[2])
-      metadata = msgpack.loads(data[1])
-      if self._start_index_eye[eye_id] is None: 
-        self._start_index_eye[eye_id] = metadata['index']
-        is_keyframe = True
-      else:
-        is_keyframe = (metadata['index'] - self._previous_index_eye[eye_id]) > 1 # TODO: not safe against overflow, but uint64
-      self._previous_index_eye[eye_id] = metadata['index']
-      pts = metadata['index'] - self._start_index_eye[eye_id]
-      # Decode the frame.
-      payload = data[2]
-      img_data = np.frombuffer(payload, dtype=np.uint8)
-      if self._video_image_format == 'bgr':
-        img = img_data.reshape(metadata['height'], metadata['width'], 3)
-      else:
-        img_data = cv2.imdecode(img_data, cv2.IMREAD_COLOR)
-        img = img_data.reshape(metadata['height'], metadata['width'], 3)
-      # Prepare the output for the file writer.
-      video_eye_items = [
-        ('frame_timestamp', float(metadata['timestamp'])),
-        ('frame_index', metadata['index']), # world view frame index used for annotation
-        ('frame', (img, is_keyframe, pts))
-      ]
+        # Prepare the output for the file writer.
+        video_world_items = [
+          ('frame_timestamp', float(metadata['timestamp'])),
+          ('frame_index', metadata['index']), # world view frame index used for annotation
+          ('frame', (img_buffer, is_keyframe, pts)),
+        ]
+
+      # Process eye video data
+      elif topic in ['frame.eye.0', 'frame.eye.1']:
+        # Prepare the metadata for the frame.
+        eye_id = int(topic.split('.')[2])
+        metadata = msgpack.loads(data[1])
+        if self._start_index_eye[eye_id] is None: 
+          self._start_index_eye[eye_id] = metadata['index']
+          is_keyframe = True
+        else:
+          is_keyframe = (metadata['index'] - self._previous_index_eye[eye_id]) > 1 # NOTE: not safe against overflow, but uint64
+        self._previous_index_eye[eye_id] = metadata['index']
+        pts = metadata['index'] - self._start_index_eye[eye_id]
+        # Decode the frame.
+        img_buffer = data[2]
+        # Prepare the output for the file writer.
+        video_eye_items = [
+          ('frame_timestamp', float(metadata['timestamp'])),
+          ('frame_index', metadata['index']), # world view frame index used for annotation
+          ('frame', (img_buffer, is_keyframe, pts))
+        ]
 
     # Create a data dictionary.
     # The keys should correspond to device names after the 'eye-tracking-' prefix.
@@ -323,13 +319,13 @@ class PupilFacade:
       self._send_to_ipc('T %0.8f' % time_s)
 
     # Estimate the network delay when sending the set-time command.
-    transmit_delay_s = estimate_transmission_delay(ping_fn=lambda: set_device_time(time.time()))
+    transmit_delay_s = estimate_transmission_delay(ping_fn=lambda: set_device_time(get_time()))
 
     # self._log_debug('Estimated Pupil Core set clock transmit delay [ms]: mean %0.3f | std %0.3f | min %0.3f | max %0.3f' % \
     #                 (np.mean(transmit_delay_s)*1000.0, np.std(transmit_delay_s)*1000.0,
     #                  np.min(transmit_delay_s)*1000.0, np.max(transmit_delay_s)*1000.0))
     # Check that the sync was successful.
-    set_device_time(time.time() + transmit_delay_s)
+    set_device_time(get_time() + transmit_delay_s)
     clock_offset_ms = self._get_device_clock_offset_s()/1000.0
     if abs(clock_offset_ms) > 5:
       # self._log_warn('WARNING: Pupil Core clock sync may not have been successful. Offset is still %0.3f ms.' % clock_offset_ms)
@@ -352,9 +348,9 @@ class PupilFacade:
       #  (assume symmetric network delays).
       # Note that in practice, this delay is small when
       #  using Pupil Capture via USB (typically 0-1 ms, rarely 5-10 ms).
-      local_time_before = time.time()
+      local_time_before = get_time()
       pupil_time = self._get_device_time()
-      local_time_after = time.time()
+      local_time_after = get_time()
       local_time = (local_time_before + local_time_after) / 2.0
       clock_offsets_s.append(pupil_time - local_time)
     # Average multiple readings to account for variable network delays.

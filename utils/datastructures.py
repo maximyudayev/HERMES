@@ -26,9 +26,9 @@
 # ############
 
 from abc import ABC, abstractmethod
-from collections import OrderedDict, deque
-from threading import Lock
+import queue
 from typing import Any, Callable, Iterable
+from collections import OrderedDict, deque
 
 
 class BufferInterface(ABC):
@@ -89,7 +89,7 @@ class TimestampToCounterConverter:
     self._first_timestamps = OrderedDict([(k, None) for k in keys])
     self._previous_timestamps = OrderedDict([(k, None) for k in keys])
     self._counters = OrderedDict([(k, None) for k in keys])
-    
+
 
   # Sets the start time according to the first received packet and switches
   #   to the monotone calculation routine after.
@@ -147,55 +147,58 @@ class AlignedFifoBuffer(BufferInterface):
   def __init__(self,
                keys: Iterable,
                timesteps_before_stale: int): # NOTE: allows yeeting from buffer if some keys have been empty for a while (disconnection or out of range), while others continue producing
-    self._lock = Lock()
     self._buffer = OrderedDict([(k, deque()) for k in keys])
+    self._output_queue = queue.Queue()
     self._counter_snapshot = 0 # Updated only on yeet to discard stale sample that arrived too late.
     self._timesteps_before_stale = timesteps_before_stale
 
 
-  def plop(self, key: str, data: dict, counter: int):
-    self._lock.acquire()
-    self._plop(key=key, data=data, counter=counter)
-    self._lock.release()
-
-
   # Adding packets to the datastructure is asynchronous for each key.
-  def _plop(self, key: str, data: dict, counter: int):
+  def plop(self, key: str, data: dict, counter: int):
     # Add counter into the data payload to retreive on the reader. (Useful for time->counter converted buffer).
     data["counter"] = counter
     # The snapshot had not been read yet, even if measurement is stale (arrived later than specified), 
     #   there's still time to add it.
-    
     if counter >= self._counter_snapshot:
       # Empty pad if some intermediate timesteps did not recieve a packet for this key.
       while len(self._buffer[key]) < (counter - self._counter_snapshot):
         self._buffer[key].append(None)
       self._buffer[key].append(data)
+    else:
+      print("%d packet of %s arrived too late."%(counter, key), flush=True)
 
-
-  # Getting packets from the datastructure is synchronous for all keys.
-  def yeet(self, is_running: bool) -> Any | None:
-    self._lock.acquire()
+    # If buffer contents are valid, move snapshot into the output Queue.
+    #   Update frame counter to keep track of removed data to discard stale late arrivals.
     is_every_key_has_data = all([len(buf) for buf in self._buffer.values()])
-    is_every_key_empty = all([not len(buf) for buf in self._buffer.values()])
     is_some_key_exceeds_stale_period = any([len(buf) >= self._timesteps_before_stale for buf in self._buffer.values()])
     is_some_key_empty = any([not len(buf) for buf in self._buffer.values()])
     if is_every_key_has_data:
       oldest_packet = {k: buf.popleft() for k, buf in self._buffer.items()}
-      # Update frame counter to keep track of removed data to discard stale late arrivals.
-      self._counter_snapshot += 1
+      self._put_output_queue(oldest_packet)
     elif is_some_key_exceeds_stale_period and is_some_key_empty:
       oldest_packet = {k: (buf.popleft() if len(buf) else None) for k, buf in self._buffer.items()}
-      self._counter_snapshot += 1
-    else:
-      # No more new data will be captured, can evict all present data.
-      if not is_running and not is_every_key_empty:
-        oldest_packet = {k: (buf.popleft() if len(buf) else None) for k, buf in self._buffer.items()}
-        self._counter_snapshot += 1
-      else:
-        oldest_packet = None
-    self._lock.release()
-    return oldest_packet
+      self._put_output_queue(oldest_packet)
+
+
+  def _put_output_queue(self, packet: dict) -> None:
+    self._counter_snapshot += 1
+    self._output_queue.put(packet)
+
+
+  # No more new data will be captured, can evict all present data.
+  def flush(self) -> None:
+    while (is_any_key_not_empty := any([len(buf) for buf in self._buffer.values()])):
+      oldest_packet = {k: (buf.popleft() if len(buf) else None) for k, buf in self._buffer.items()}
+      self._put_output_queue(oldest_packet)
+
+
+  # Getting packets from the datastructure is synchronous for all keys.
+  def yeet(self, timeout: float = 10.0) -> Any | None:
+    try:
+      return self._output_queue.get(timeout=timeout)
+    except queue.Empty:
+      print("Timed out on no more snapshots in the output Queue.")
+      return None
 
 
 class TimestampAlignedFifoBuffer(AlignedFifoBuffer):
@@ -212,13 +215,11 @@ class TimestampAlignedFifoBuffer(AlignedFifoBuffer):
 
 
   # Override parent method.
-  def plop(self, key, data, timestamp) -> None:
+  def plop(self, key: str, data: dict, timestamp: float) -> None:
     # Calculate counter from timestamp and local datastructure to avoid race condition.
-    self._lock.acquire()
     counter = self._converter._counter_from_timestamp_fn(key, timestamp)
     if counter is not None:
-      self._plop(key=key, data=data, counter=counter)
-    self._lock.release()
+      super().plop(key=key, data=data, counter=counter)
 
 
 class NonOverflowingCounterAlignedFifoBuffer(AlignedFifoBuffer):
@@ -233,10 +234,8 @@ class NonOverflowingCounterAlignedFifoBuffer(AlignedFifoBuffer):
 
 
   # Override parent method.
-  def plop(self, key, data, counter) -> None:
+  def plop(self, key: str, data: dict, counter: int) -> None:
     # Calculate counter from timestamp and local datastructure to avoid race condition.
-    self._lock.acquire()
     counter = self._converter._counter_to_nonoverflowing_counter_fn(key, counter)
     if counter is not None:
-      self._plop(key=key, data=data, counter=counter)
-    self._lock.release()
+      super().plop(key=key, data=data, counter=counter)

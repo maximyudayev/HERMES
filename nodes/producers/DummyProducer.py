@@ -78,13 +78,17 @@ class DummyProducer(Producer):
     return True
 
 
+  def _keep_samples(self) -> None:
+    pass
+
+
   def _process_data(self) -> None:
     if self._is_continue_capture:
       time.sleep(1.0)
-      time_s: float = time.time()
-      print(time_s, flush=True)
+      process_time_s: float = get_time()
+      print(process_time_s, flush=True)
       tag: str = "%s.data" % self._log_source_tag()
-      self._publish(tag, time_s=time_s, data={'sensor-emulator': {'toa': time_s}})
+      self._publish(tag, process_time_s=process_time_s, data={'sensor-emulator': {'toa': process_time_s}})
     else:
       self._send_end_packet()
 

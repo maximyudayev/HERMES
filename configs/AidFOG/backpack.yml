@@ -35,14 +35,15 @@ print_status  : True
 print_debug   : True
 
 
-host_ip : "192.168.69.103"
-remote_publisher_ips: []
+host_ip : "192.168.0.103"
+is_master_broker: False
 
 is_remote_kill: True
-remote_kill_ip: "192.168.69.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
+remote_kill_ip: "192.168.0.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
 
 remote_subscriber_ips: 
-  - "192.168.69.100"
+  - "192.168.0.100"
+remote_publisher_ips: []
 
 
 logging_spec:
@@ -58,9 +59,8 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec         : 'h264_qsv'
+  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
   video_codec_num_cpu : 1
-  video_pix_format    : 'nv12'
 
   audio_format        : "wav" # currently only supports WAV
 
@@ -84,7 +84,7 @@ producer_specs:
   - class: "EyeStreamer"
     pupil_capture_ip        : "localhost"
     pupil_capture_port      : "50020"
-    video_image_format      : "bgr"
+    video_image_format      : "jpeg"
     gaze_estimate_stale_s   : 0.2
     is_binocular            : True # uses both eyes for gaze data and for video
     is_stream_video_world   : True
@@ -106,10 +106,6 @@ producer_specs:
     fps_video_world       : 30.0
     fps_video_eye0        : 120.0
     fps_video_eye1        : 120.0
-
-  # # Moticon insole pressure.
-  # - class: "InsoleStreamer"
-  #   sampling_rate_hz: 100
 
 
 consumer_specs: []

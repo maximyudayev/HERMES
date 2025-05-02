@@ -35,14 +35,15 @@ print_status  : True
 print_debug   : True
 
 
-host_ip : "192.168.69.100"
-remote_publisher_ips: # IPs of Brokers to listen to for data on some of desired topics
-  - "192.168.69.103"
+host_ip : "192.168.0.100"
+is_master_broker: True
 
-is_remote_kill: True
+is_remote_kill: False
 remote_kill_ip: null
 
 remote_subscriber_ips: []
+remote_publisher_ips: # IPs of Brokers to listen to for data on some of desired topics
+  - "192.168.0.103"
 
 
 logging_spec:
@@ -58,9 +59,8 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec         : 'h264_qsv'
+  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
   video_codec_num_cpu : 1
-  video_pix_format    : 'nv12'
 
   audio_format        : "wav" # currently only supports WAV
 
@@ -80,93 +80,7 @@ producer_specs:
     camera_config_filepath: "resources/AidFOG/pylon_30fps_2K_40478064.pfs"
 
 
-consumer_specs: # DataVisualizer and DataLogger are mutually exclusive, select only one.
-  - class: "DataVisualizer"
-    stream_specs: 
-      - class: "ExperimentControlStreamer"
-        activities: # Cybathlon activities that you want to label
-          - "Walking"
-          - "360 Turning"
-          - "Narrow doorway"
-          - "TUG"
-          - "Personal hotspot 1"
-          - "Personal hotspot 2"
-      
-      - class: "DotsStreamer"
-        device_mapping: 
-          knee_right      : "40195BFC800B01F2"
-          foot_right      : "40195BFC800B003B"
-          pelvis          : "40195BFD80C20052"
-          knee_left       : "40195BFC800B017A"
-          foot_left       : "40195BFD80C200D1"
-        master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
-        num_joints        : 5
-        sampling_rate_hz  : 60
-        is_get_orientation: False
-        is_sync_devices   : True
-        timesteps_before_solidified : 120
-      
-      - class: "EyeStreamer"
-        pupil_capture_ip        : "localhost"
-        pupil_capture_port      : "50020"
-        video_image_format      : "bgr"
-        gaze_estimate_stale_s   : 0.2
-        is_binocular            : True # uses both eyes for gaze data and for video
-        is_stream_video_world   : True
-        is_stream_video_eye     : False
-        is_stream_fixation      : False
-        is_stream_blinks        : False
-        shape_video_world: 
-          - 720
-          - 1280
-          - 3
-        shape_video_eye0: 
-          - 192
-          - 192
-          - 3
-        shape_video_eye1: 
-          - 192
-          - 192
-          - 3
-        fps_video_world       : 30.0
-        fps_video_eye0        : 120.0
-        fps_video_eye1        : 120.0
-        timesteps_before_solidified : 1
-      
-      - class: "CameraStreamer"
-        camera_mapping: # map camera names (usable as device names in the HDF5 file) to capture device indexes
-          basler_north : "40478064"
-          basler_east  : "40549960"
-          basler_south : "40549975"
-          basler_west  : "40549976"
-        fps: 30
-        resolution:
-          - 1440
-          - 2560
-        camera_config_filepath: "resources/AidFOG/pylon_30fps_2K_40478064.pfs"
-        timesteps_before_solidified : 1
-      
-      # - class: "InsoleStreamer"
-      #   sampling_rate_hz: 100
-    
-    logging_spec:
-      stream_period_s     : 1
-  
-      stream_hdf5         : True
-      stream_csv          : False
-      stream_video        : True
-      stream_audio        : False
-
-      dump_csv            : False
-      dump_hdf5           : False
-      dump_video          : False
-      dump_audio          : False
-
-      video_codec         : 'h264_qsv'
-      video_codec_num_cpu : 1
-      video_pix_format    : 'nv12'
-
-      audio_format        : "wav" # currently only supports WAV
+consumer_specs: []
 
 
 pipeline_specs: []

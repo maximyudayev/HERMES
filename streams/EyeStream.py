@@ -50,6 +50,7 @@ class EyeStream(Stream):
                fps_video_world: float,
                fps_video_eye0: float,
                fps_video_eye1: float,
+               pixel_format: str, # [bgr, yuv, jpeg]
                timesteps_before_solidified: int = 0,
                update_interval_ms: int = 100,
                **_) -> None:
@@ -62,6 +63,7 @@ class EyeStream(Stream):
     self._is_stream_blinks = is_stream_blinks
     self._gaze_estimate_stale_s = gaze_estimate_stale_s
     self._update_interval_ms = update_interval_ms
+    self._pixel_format = pixel_format
     self._timesteps_before_solidified = timesteps_before_solidified
 
     # Define data notes that will be associated with streams created below.
@@ -295,7 +297,7 @@ class EyeStream(Stream):
                       data_notes=self._data_notes['eye-video-world']['frame'],
                       is_measure_rate_hz=True,
                       is_video=True,
-                      color_format='bgr',
+                      color_format=self._pixel_format, # can be bgr, jpeg and yuv
                       timesteps_before_solidified=self._timesteps_before_solidified)
 
     if is_stream_video_eye:
@@ -319,7 +321,7 @@ class EyeStream(Stream):
                       data_notes=self._data_notes['eye-video-eye0']['frame'],
                       is_measure_rate_hz=True,
                       is_video=True,
-                      color_format='bgr',
+                      color_format=self._pixel_format,
                       timesteps_before_solidified=self._timesteps_before_solidified)
       if is_binocular:
         self.add_stream(device_name='eye-video-eye1', 
@@ -342,7 +344,7 @@ class EyeStream(Stream):
                         data_notes=self._data_notes['eye-video-eye1']['frame'],
                         is_measure_rate_hz=True,
                         is_video=True,
-                        color_format='bgr',
+                        color_format=self._pixel_format,
                         timesteps_before_solidified=self._timesteps_before_solidified)
 
 
@@ -524,11 +526,6 @@ class EyeStream(Stream):
     ])
 
     # Fixations data
-    self._data_notes['eye-fixations']['confidence'] = OrderedDict([
-      ('Range', '[0, 1]'),
-      ('Description', 'Confidence of the fixation detection'),
-      ('PupilCapture key', 'fixations. > confidence'),
-    ])
     self._data_notes['eye-fixations']['timestamp'] = OrderedDict([
       ('Description', 'The timestamp recorded by the Pupil Capture software, '
                       'which should be more precise than the system time when the data was received (the time_s field).  '
@@ -542,11 +539,26 @@ class EyeStream(Stream):
       (Stream.metadata_data_headings_key, ['x','y']),
       ('PupilCapture key', 'fixations. > norm_pos'),
     ])
-    self._data_notes['eye-fixations']['point_3d'] = OrderedDict([
+    self._data_notes['eye-fixations']['dispersion'] = OrderedDict([
+      ('Range', ''),
+      ('Description', ''),
+      ('PupilCapture key', 'fixations. > dispersion'),
+    ])
+    self._data_notes['eye-fixations']['duration'] = OrderedDict([
+      ('Range', ''),
+      ('Description', ''),
+      ('PupilCapture key', 'fixations. > duration'),
+    ])
+    self._data_notes['eye-fixations']['confidence'] = OrderedDict([
+      ('Range', ''),
+      ('Description', ''),
+      ('PupilCapture key', 'fixations. > confidence'),
+    ])
+    self._data_notes['eye-fixations']['gaze_point_3d'] = OrderedDict([
       ('Units', 'mm'),
       ('Notes', 'Maps pupil positions into the world camera coordinate system'),
       (Stream.metadata_data_headings_key, ['x','y','z']),
-      ('PupilCapture key', 'fixations. > point_3d'),
+      ('PupilCapture key', 'fixations. > gaze_point_3d'),
     ])
 
     # Blinks data

@@ -93,9 +93,9 @@ class ViconStream(Stream):
       ('Description', 'Analog EMG measurements captured using the DAC of the Vicon system.'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.keys())),
     ])
-    self._data_notes['vicon-data']['latency'] = OrderedDict([
-      ('Description', ''),
-    ])
     self._data_notes['vicon-data']['counter'] = OrderedDict([
-      ('Description', ''),
+      ('Description', 'Block frame number for a burst of EMG measurements, sent in 10ms bursts.'),
+    ])
+    self._data_notes['vicon-data']['latency'] = OrderedDict([
+      ('Description', 'Transmission delay estimate from Vicon w.r.t. the on-sensor acquisition time.'),
     ])

@@ -79,6 +79,12 @@ class CameraStream(Stream):
                       sample_size=[1],
                       sampling_rate_hz=fps,
                       data_notes=self._data_notes[camera_id]["frame_sequence"])
+      self.add_stream(device_name=camera_id,
+                      stream_name='toa_s',
+                      data_type='float64',
+                      sample_size=[1],
+                      sampling_rate_hz=fps,
+                      data_notes=self._data_notes[camera_id]['toa_s'])
 
 
   def get_fps(self) -> dict[str, float]:
@@ -109,5 +115,8 @@ class CameraStream(Stream):
         ('Notes', 'Time of sampling of the frame w.r.t the camera onboard PTP clock'),
       ])
       self._data_notes[camera_id]["frame_sequence"] = OrderedDict([
-        ('Notes', ('Monotonically increasing index of the frame to track lost frames')),
+        ('Notes', 'Monotonically increasing index of the frame to track lost frames'),
+      ])
+      self._data_notes[camera_id]['toa_s'] = OrderedDict([
+        ('Notes', 'Time of arrival of the packet w.r.t. system clock.'),
       ])

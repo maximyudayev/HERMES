@@ -31,7 +31,6 @@ from streams import InsoleStream
 from utils.print_utils import *
 from utils.zmq_utils import *
 import socket
-import time
 
 
 ##################################################
@@ -83,23 +82,32 @@ class InsoleStreamer(Producer):
   def _connect(self) -> bool:
     try:
       self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-      self._sock.settimeout(0.5)
-      self._sock.bind((IP_LOOPBACK, PORT_MOTICON))
+      self._sock.settimeout(10)
+      self._sock.bind((IP_LOOPBACK, int(PORT_MOTICON)))
       self._sock.recv(1024)
       self._sock.settimeout(None)
       return True
     except socket.timeout:
+      print('[ERROR]: Check if OpenGO app and software are ON.\n', flush=True)
       return False
+    except Exception as e:
+      print('[ERROR]: InsoleStreamer could not connect.\n', e, flush=True)
+      return False
+
+
+  def _keep_samples(self) -> None:
+    pass
 
 
   def _process_data(self) -> None:
     if self._is_continue_capture:
       payload, address = self._sock.recvfrom(1024) # data is whitespace-separated byte string
-      time_s: float = time.time()
+      process_time_s: float = get_time()
       payload = [float(word) for word in payload.split()] # splits byte string into array of (multiple) bytes, removing whitespace separators between measurements
 
       data = {
         'timestamp': payload[0],
+        'toa_s': process_time_s,
         'foot_pressure_left': payload[9:25],
         'foot_pressure_right': payload[34:50],
         'acc_left': payload[1:4],
@@ -113,7 +121,7 @@ class InsoleStreamer(Producer):
       }
 
       tag: str = "%s.data" % self._log_source_tag()
-      self._publish(tag, time_s=time_s, data={'insoles-data': data})
+      self._publish(tag, process_time_s=process_time_s, data={'insoles-data': data})
     else:
       self._send_end_packet()
 

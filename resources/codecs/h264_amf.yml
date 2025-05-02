@@ -1,0 +1,5 @@
+codec_name  : 'h264_amf'
+pix_format  : 'nv12'
+options:
+  profile   : 'main'
+  usage     : 'lowlatency'

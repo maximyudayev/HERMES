@@ -32,7 +32,7 @@ from handlers.MovellaHandler import MovellaFacade
 from utils.zmq_utils import *
 
 import numpy as np
-import time
+from utils.time_utils import get_time
 from collections import OrderedDict
 
 
@@ -115,11 +115,15 @@ class DotsStreamer(Producer):
     return True
 
 
+  def _keep_samples(self) -> None:
+    self._handler.keep_data()
+
+
   def _process_data(self) -> None:
     # Retrieve the oldest enqueued packet for each sensor.
     snapshot = self._handler.get_snapshot()
     if snapshot is not None:
-      process_time_s: float = time.time()
+      process_time_s: float = get_time()
       acceleration = np.empty((self._num_joints, 3), dtype=np.float32)
       acceleration.fill(np.nan)
       gyroscope = np.empty((self._num_joints, 3), dtype=np.float32)
@@ -127,10 +131,10 @@ class DotsStreamer(Producer):
       magnetometer = np.empty((self._num_joints, 3), dtype=np.float32)
       magnetometer.fill(np.nan)
       if self._is_get_orientation:
-        orientation = np.empty((self._num_joints, 4), dtype=np.float32)
-        orientation.fill(np.nan)
+        quaternion = np.empty((self._num_joints, 4), dtype=np.float32)
+        quaternion.fill(np.nan)
       timestamp = np.zeros((self._num_joints), np.uint32)
-      toa_s = np.empty((self._num_joints), dtype=np.float32)
+      toa_s = np.empty((self._num_joints), dtype=np.float64)
       toa_s.fill(np.nan)
       counter = np.zeros((self._num_joints), np.uint32)
 
@@ -141,8 +145,8 @@ class DotsStreamer(Producer):
           gyroscope[id] = packet["gyr"]
           magnetometer[id] = packet["mag"]
           if self._is_get_orientation:
-            orientation[id] = packet["quaternion"]
-          timestamp[id] = packet["timestamp_fine"]
+            quaternion[id] = packet["quaternion"]
+          timestamp[id] = packet["timestamp"]
           toa_s[id] = packet["toa_s"]
           counter[id] = packet["counter"]
 
@@ -161,10 +165,10 @@ class DotsStreamer(Producer):
         'counter': counter,
       }
       if self._is_get_orientation:
-        data["orientation"] = orientation
+        data["quaternion"] = quaternion
 
       tag: str = "%s.data" % self._log_source_tag()
-      self._publish(tag, time_s=process_time_s, data={'dots-imu': data})
+      self._publish(tag, process_time_s=process_time_s, data={'dots-imu': data})
     elif not self._is_continue_capture:
       # If triggered to stop and no more available data, send empty 'END' packet and join.
       self._send_end_packet()
@@ -175,4 +179,5 @@ class DotsStreamer(Producer):
 
 
   def _cleanup(self) -> None:
+    self._handler.close()
     super()._cleanup()

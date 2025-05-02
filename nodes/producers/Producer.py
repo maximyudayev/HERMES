@@ -26,7 +26,7 @@
 # ############
 
 from abc import abstractmethod
-import time
+from typing import Any, Callable
 
 import zmq
 import threading
@@ -65,6 +65,7 @@ class Producer(Node):
     self._port_pub = port_pub
     self._is_continue_capture = True
     self._transmit_delay_sample_period_s = transmit_delay_sample_period_s
+    self._publish_fn: Callable[[str, dict[str, Any]], None] = lambda tag, kwargs: None
 
     # Data structure for keeping track of data
     self._stream: Stream = self.create_stream(stream_info)
@@ -109,16 +110,9 @@ class Producer(Node):
 
   # Common method to save and publish the captured sample
   # NOTE: best to deal with data structure (threading primitives) AFTER handing off packet to ZeroMQ.
-  #   That way network threadcan alradystart processing the packet.
+  #   That way network thread can alrady start processing the packet.
   def _publish(self, tag: str, **kwargs) -> None:
-    # Get serialized object to send over ZeroMQ.
-    # msg = serialize(**kwargs)
-    # # Send the data packet on the PUB socket.
-    # self._pub.send_multipart([tag.encode('utf-8'), msg])
-    # Store the captured data into the data structure.
-    # time_start = time.time()
-    self._stream.append_data(**kwargs)
-    # print(time.time() - time_start, flush=True)
+    self._publish_fn(tag, **kwargs)
 
 
   # Initialize backend parameters specific to Producer.
@@ -146,6 +140,25 @@ class Producer(Node):
     if self._pub in poll_res[0]:
       self._process_data()
     super()._on_poll(poll_res)
+
+
+  def _on_sync_complete(self) -> None:
+    self._publish_fn = self._store_and_broadcast
+    self._keep_samples()
+
+
+  @abstractmethod
+  def _keep_samples(self) -> None:
+    pass
+
+
+  def _store_and_broadcast(self, tag: str, **kwargs) -> None:
+    # Get serialized object to send over ZeroMQ.
+    msg = serialize(**kwargs)
+    # Send the data packet on the PUB socket.
+    self._pub.send_multipart([tag.encode('utf-8'), msg])
+    # Store the captured data into the data structure.
+    self._stream.append_data(**kwargs)
 
 
   # Iteration loop logic for the sensor.
@@ -182,8 +195,12 @@ class Producer(Node):
     if self._transmit_delay_sample_period_s:
       self._delay_estimator.cleanup()
     # Before closing the PUB socket, wait for the 'BYE' signal from the Broker.
-    # self._sync.send_string('') # no need to read contents of the message.
-    self._sync.recv() # no need to read contents of the message.
+    self._sync.send_multipart([self._log_source_tag().encode('utf-8'), CMD_EXIT.encode('utf-8')]) 
+    host, cmd = self._sync.recv_multipart() # no need to read contents of the message.
+    print("%s received %s from %s." % (self._log_source_tag(),
+                                       cmd.decode('utf-8'),
+                                       host.decode('utf-8')),
+                                       flush=True)
     self._pub.close()
     # Join on the logging background thread last, so that all things can finish in parallel.
     self._logger_thread.join()

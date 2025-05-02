@@ -126,11 +126,11 @@ class DotsStream(Stream):
                     timesteps_before_solidified=self._timesteps_before_solidified)
     if self._is_get_orientation:
       self.add_stream(device_name='dots-imu',
-                      stream_name='orientation',
+                      stream_name='quaternion',
                       data_type='float32',
                       sample_size=(self._num_joints, 4),
                       sampling_rate_hz=self._sampling_rate_hz, 
-                      data_notes=self._data_notes['dots-imu']['orientation'])
+                      data_notes=self._data_notes['dots-imu']['quaternion'])
     self.add_stream(device_name='dots-imu',
                     stream_name='timestamp',
                     data_type='uint32',
@@ -140,7 +140,7 @@ class DotsStream(Stream):
                     data_notes=self._data_notes['dots-imu']['timestamp'])
     self.add_stream(device_name='dots-imu',
                     stream_name='toa_s',
-                    data_type='float32',
+                    data_type='float64',
                     sample_size=(self._num_joints),
                     sampling_rate_hz=self._sampling_rate_hz,
                     data_notes=self._data_notes['dots-imu']['toa_s'])
@@ -254,7 +254,7 @@ class DotsStream(Stream):
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
     if self._is_get_orientation:
-      self._data_notes['dots-imu']['orientation'] = OrderedDict([
+      self._data_notes['dots-imu']['quaternion'] = OrderedDict([
         ('Description', 'Quaternion rotation vector [W,X,Y,Z]'),
         (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
       ])

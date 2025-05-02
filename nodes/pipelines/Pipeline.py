@@ -25,6 +25,7 @@
 #
 # ############
 
+from typing import Any, Callable
 from nodes.Node import Node
 from nodes.producers.Producer import Producer
 from handlers.LoggingHandler import Logger
@@ -70,6 +71,7 @@ class Pipeline(Node):
     self._port_sub = port_sub
     self._is_continue_produce = True
     self._is_more_data_in = True
+    self._publish_fn: Callable[[str, dict[str, Any]], None] = lambda tag, kwargs: None
 
     # Data structure for keeping track of data.
     self._out_stream: Stream = self.create_stream(stream_info)
@@ -144,6 +146,10 @@ class Pipeline(Node):
     super()._on_poll(poll_res)
 
 
+  def _on_sync_complete(self) -> None:
+    self._publish_fn = self._store_and_broadcast
+
+
   # Gets called every time one of the requestes modalities produced new data.
   # In normal operation mode, all messages are 2-part.
   def _poll_data_packets(self) -> None:
@@ -183,9 +189,13 @@ class Pipeline(Node):
     pass
 
 
+  def _publish(self, tag: str, **kwargs) -> None:
+    self._publish_fn(tag, **kwargs)
+
+
   # Common method to save and publish the captured sample
   # NOTE: best to deal with data structure (threading primitives) AFTER handing off packet to ZeroMQ
-  def _publish(self, tag: str, **kwargs) -> None:
+  def _store_and_broadcast(self, tag: str, **kwargs) -> None:
     # Get serialized object to send over ZeroMQ.
     msg = serialize(**kwargs)
     # Send the data packet on the PUB socket.
@@ -217,7 +227,12 @@ class Pipeline(Node):
     # Indicate to Logger to wrap up and exit.
     self._logger.cleanup()
     # Before closing the PUB socket, wait for the 'BYE' signal from the Broker.
-    self._sync.recv() # no need to read contents of the message.
+    self._sync.send_multipart([self._log_source_tag().encode('utf-8'), CMD_EXIT.encode('utf-8')]) 
+    host, cmd = self._sync.recv_multipart() # no need to read contents of the message.
+    print("%s received %s from %s." % (self._log_source_tag(),
+                                       cmd.decode('utf-8'),
+                                       host.decode('utf-8')),
+                                       flush=True)
     self._pub.close()
     self._sub.close()
     # Join on the logging background thread last, so that all things can finish in parallel.

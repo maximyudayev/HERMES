@@ -25,40 +25,26 @@
 #
 # ############
 
-# ZeroMQ topics and message strings
-TOPIC_KILL      = 'KILL'
-CMD_HELLO       = 'HELLO'
-CMD_ACK         = 'ACK'
-CMD_START_TIME  = 'START_TIME'
-CMD_GO          = 'GO'
-CMD_END         = 'END'
-CMD_EXIT        = 'EXIT?'
-CMD_BYE         = 'BYE'
-MSG_ON          = 'ON'
-MSG_OFF         = 'OFF'
-MSG_OK          = 'OK'
+from nodes import NODES
+from nodes.Node import Node
 
-# Ports used for ZeroMQ by our system
-PORT_BACKEND        = '42069'
-PORT_FRONTEND       = '42070'
-PORT_SYNC_HOST      = '42071'
-PORT_SYNC_REMOTE    = '42072'
-PORT_KILL           = '42066'
-PORT_KILL_BTN       = '42065'
-PORT_PAUSE          = '42067'
 
-# Ports of connected devices/sensors
-PORT_MOTICON      = '8888' # defined by the Moticon desktop app, putting data at the loopback address for listening
-PORT_PROSTHESIS   = '51702' # defined by LabView code of VUB
-PORT_GUI          = '8005'
-PORT_EYE          = '50020'
-PORT_VICON        = '801' # defined by Vicon software
-
-# IP addresses of devices on the network used by our system
-DNS_LOCALHOST   = 'localhost'
-IP_LOOPBACK     = '127.0.0.1'
-
-IP_TERMINAL     = '192.168.0.100'
-IP_PROSTHESIS   = '192.168.0.101'
-IP_BACKPACK     = '192.168.0.103'
-IP_VICON        = '192.168.0.104'
+def launch_node(spec: dict,
+                host_ip: str,
+                port_backend: str,
+                port_frontend: str,
+                port_sync: str,
+                port_killsig: str):
+  # Create all desired consumers and connect them to the PUB broker socket.
+  class_name: str = spec['class']
+  class_args = spec.copy()
+  del (class_args['class'])
+  class_args['host_ip'] = host_ip
+  class_args['port_pub'] = port_backend
+  class_args['port_sub'] = port_frontend
+  class_args['port_sync'] = port_sync
+  class_args['port_killsig'] = port_killsig
+  # Create the class object.
+  class_type: type[Node] = NODES[class_name]
+  class_object: Node = class_type(**class_args)
+  class_object()

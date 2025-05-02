@@ -120,8 +120,8 @@ class CameraStreamer(Producer):
     for idx, cam in enumerate(self._cam_array):
       # For consistency load persistent settings stored in the camera.
       # NOTE: avoid overwriting this user set in Pylon viewer.
-      cam.UserSetSelector = "UserSet1"
-      cam.UserSetLoad.Execute()
+      # cam.UserSetSelector = "UserSet1"
+      # cam.UserSetLoad.Execute()
 
       # Preload persistent feature configurations saved to a file (easier configuration of all cameras).
       # if self._camera_config_filepath is not None: 
@@ -163,7 +163,7 @@ class CameraStreamer(Producer):
 
 
   def _get_frame_stopped(self) -> None:
-    is_timeout = (time.time() - self._stop_time_s) < 5
+    is_timeout = (get_time() - self._stop_time_s) > 5
     if buf := self._image_handler.get_frame():
       self._process_frame(*buf)
     elif is_timeout and not self._is_continue_capture:
@@ -171,28 +171,34 @@ class CameraStreamer(Producer):
       self._send_end_packet()
 
 
-  def _process_frame(self, 
-                     camera_id: str, 
+  def _keep_samples(self) -> None:
+    self._image_handler.keep_data()
+
+
+  def _process_frame(self,
+                     camera_id: str,
                      frame: np.ndarray,
                      is_keyframe: bool,
                      pts: int,
-                     timestamp: np.uint64, 
-                     sequence_id: np.int64) -> None:
-    time_s = time.time()
+                     timestamp: np.uint64,
+                     sequence_id: np.int64,
+                     toa_s: float) -> None:
+    process_time_s = get_time()
     tag: str = "%s.%s.data" % (self._log_source_tag(), self._camera_mapping[camera_id])
     data = {
       'frame': (frame, is_keyframe, pts),
       'timestamp': timestamp,
-      'frame_sequence': sequence_id
+      'frame_sequence': sequence_id,
+      'toa_s': toa_s
     }
-    self._publish(tag=tag, time_s=time_s, data={camera_id: data})
+    self._publish(tag=tag, process_time_s=process_time_s, data={camera_id: data})
 
 
   def _stop_new_data(self) -> None:
     # Stop capturing data.
     self._cam_array.StopGrabbing()
     # Change the callback to use a timeout for checking the queue for new packets.
-    self._stop_time_s = time.time()
+    self._stop_time_s = get_time()
     self._get_frame_fn = self._get_frame_stopped
 
 

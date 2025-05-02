@@ -32,7 +32,7 @@ from handlers.XsensHandler import XsensFacade
 from utils.zmq_utils import *
 
 import numpy as np
-import time
+from utils.time_utils import get_time
 from collections import OrderedDict
 
 
@@ -103,20 +103,24 @@ class AwindaStreamer(Producer):
     return True
 
 
+  def _keep_samples(self) -> None:
+    self._handler.keep_data()
+
+
   def _process_data(self) -> None:
-    process_time_s = time.time()
     snapshot = self._handler.get_snapshot()
-    if snapshot:
+    if snapshot is not None:
+      process_time_s = get_time()
       acceleration = np.empty((self._num_joints, 3), dtype=np.float32)
       acceleration.fill(np.nan)
       gyroscope = np.empty((self._num_joints, 3), dtype=np.float32)
       gyroscope.fill(np.nan)
       magnetometer = np.empty((self._num_joints, 3), dtype=np.float32)
       magnetometer.fill(np.nan)
-      orientation = np.empty((self._num_joints, 4), dtype=np.float32)
-      orientation.fill(np.nan)      
+      quaternion = np.empty((self._num_joints, 4), dtype=np.float32)
+      quaternion.fill(np.nan)      
       timestamp = np.zeros((self._num_joints), dtype=np.uint32)
-      toa_s = np.empty((self._num_joints), dtype=np.float32)
+      toa_s = np.empty((self._num_joints), dtype=np.float64)
       toa_s.fill(np.nan)
       counter = np.zeros((self._num_joints), dtype=np.uint32)
       counter_onboard = np.zeros((self._num_joints), dtype=np.uint16)
@@ -127,8 +131,8 @@ class AwindaStreamer(Producer):
           acceleration[id] = packet["acc"]
           gyroscope[id] = packet["gyr"]
           magnetometer[id] = packet["mag"]
-          orientation[id] = packet["quaternion"]
-          timestamp[id] = packet["timestamp_fine"]
+          quaternion[id] = packet["quaternion"]
+          timestamp[id] = packet["timestamp"]
           toa_s[id] = packet["toa_s"]
           counter[id] = packet["counter"]
           counter_onboard[id] = packet["counter_onboard"]
@@ -143,7 +147,7 @@ class AwindaStreamer(Producer):
         'magnetometer-x': magnetometer[:,0],
         'magnetometer-y': magnetometer[:,1],
         'magnetometer-z': magnetometer[:,2],
-        'orientation': orientation,
+        'quaternion': quaternion,
         'timestamp': timestamp,
         'toa_s': toa_s,
         'counter': counter,
@@ -151,7 +155,7 @@ class AwindaStreamer(Producer):
       }
 
       tag: str = "%s.data" % self._log_source_tag()
-      self._publish(tag, time_s=process_time_s, data={'awinda-imu': data})
+      self._publish(tag, process_time_s=process_time_s, data={'awinda-imu': data})
     elif not self._is_continue_capture:
       # If triggered to stop and no more available data, send empty 'END' packet and join.
       self._send_end_packet()
@@ -162,4 +166,5 @@ class AwindaStreamer(Producer):
 
 
   def _cleanup(self) -> None:
+    self._handler.close()
     super()._cleanup()

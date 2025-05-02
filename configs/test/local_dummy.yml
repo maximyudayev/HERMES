@@ -36,6 +36,7 @@ print_debug   : True
 
 
 host_ip : "127.0.0.1"
+is_master_broker: True
 
 remote_publisher_ips: []
 remote_subscriber_ips: []
@@ -57,9 +58,8 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec         : 'h264_amf'
+  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
   video_codec_num_cpu : 1
-  video_pix_format    : 'nv12'
 
   audio_format        : "wav" # currently only supports WAV
 
@@ -70,7 +70,30 @@ producer_specs:
     sampling_rate_hz: 1
 
 
-consumer_specs: [] # DataVisualizer and DataLogger are mutually exclusive, select only one.
+consumer_specs:
+  - class: "DummyConsumer"
+    stream_specs:
+      - class: "DummyProducer"
+        sampling_rate_hz: 1
+
+    logging_spec:
+      stream_period_s     : 30
+  
+      stream_hdf5         : True
+      stream_csv          : False
+      stream_video        : False
+      stream_audio        : False
+
+      dump_csv            : False
+      dump_hdf5           : False
+      dump_video          : False
+      dump_audio          : False
+
+      video_codec             : 'h264_qsv'
+      video_codec_num_cpu     : 1
+      video_codec_pix_format  : 'nv12'
+
+      audio_format        : "wav" # currently only supports WAV
 
 
 pipeline_specs: []

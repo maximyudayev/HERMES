@@ -70,7 +70,7 @@ class TmsiStream(Stream):
                     sampling_rate_hz=self._sampling_rate_hz)
     self.add_stream(device_name='tmsi-data',
                     stream_name='counter',
-                    data_type='float32', # TODO: specify the right data format
+                    data_type='int32',
                     sample_size=[1],
                     sampling_rate_hz=self._sampling_rate_hz,
                     is_measure_rate_hz=True)
