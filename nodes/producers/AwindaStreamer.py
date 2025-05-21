@@ -25,6 +25,8 @@
 #
 # ############
 
+import json
+import socket
 from nodes.producers.Producer import Producer
 from streams import AwindaStream
 
@@ -46,7 +48,6 @@ class AwindaStreamer(Producer):
   def _log_source_tag(cls) -> str:
     return 'awinda'
 
-
   def __init__(self,
                host_ip: str,
                logging_spec: dict,
@@ -65,6 +66,13 @@ class AwindaStreamer(Producer):
     self._device_mapping = device_mapping
     self._row_id_mapping = OrderedDict([(device_id, row_id) for row_id, device_id in enumerate(self._device_mapping.values())])
 
+    self._data_buffer_index = 0
+    self._data_buffer_counter = 0
+    self._data_buffer_max_index = sampling_rate_hz - 1
+    self._data_buffer = np.zeros((num_joints, 3, sampling_rate_hz), dtype=np.float64)
+
+    self.GUIsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
     stream_info = {
       "num_joints": self._num_joints,
       "sampling_rate_hz": sampling_rate_hz,
@@ -80,6 +88,36 @@ class AwindaStreamer(Producer):
                      port_killsig=port_killsig,
                      transmit_delay_sample_period_s=transmit_delay_sample_period_s)
 
+  def append_to_data_buffer(self, data: np.ndarray) -> None:
+    # appends a 1 second sample of acceleration to data buffer
+    # returns True if buffer is full else False
+    self._data_buffer[:,:, self._data_buffer_index] = data
+    self._data_buffer_index += 1
+    if self._data_buffer_index > self._data_buffer_max_index:
+      self.flush_data_buffer()
+      return True
+    else:
+      return False
+    
+  def post_data_to_IP(self) -> None:
+    for i in range(self._num_joints):
+      samples = [{
+                    'x': float(self._data_buffer[i][0][t]),
+                    'y': float(self._data_buffer[i][1][t]),
+                    'z': float(self._data_buffer[i][2][t])
+                  } for t in range(self._data_buffer.shape[-1])]
+            
+      payload = f"{self._log_source_tag()}-{i+1}||{self._data_buffer_counter}||".encode() + json.dumps(samples).encode()
+      self.GUIsocket.sendto(payload, ('10.46.188.253', 59456)) # TODO hardcoded for testing now, can be discovered through IP discovery and then passed to init()
+    
+  def flush_data_buffer(self) -> None:
+    # reset valid data index to 0
+    self._data_buffer_index = 0
+    self.post_data_to_IP()
+    # add data counter
+    self._data_buffer_counter += 1
+    self._data_buffer_counter %= 5
+    
 
   @classmethod
   def create_stream(cls, stream_info: dict) -> AwindaStream:  
@@ -147,6 +185,8 @@ class AwindaStreamer(Producer):
 
       tag: str = "%s.data" % self._log_source_tag()
       self._publish(tag, process_time_s=process_time_s, data={'awinda-imu': data})
+      self.append_to_data_buffer(acceleration)
+
     elif not self._is_continue_capture:
       # If triggered to stop and no more available data, send empty 'END' packet and join.
       self._send_end_packet()
