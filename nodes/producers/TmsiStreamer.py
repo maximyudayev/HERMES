@@ -205,6 +205,13 @@ class TmsiStreamer(Producer):
 
   def _cleanup(self) -> None:
     # Set the DR-DS interface type back to docked
-    self.device.set_device_interface(DeviceInterfaceType.docked)
+    device_docked = False
+    while not device_docked:
+      try:
+        self.device.set_device_interface(DeviceInterfaceType.docked)
+        device_docked = True
+      except Exception as e:
+        print(f"Unhandled exception: {e}") # TODO this can raise TMSI error because the device is not on the dock when setting interface
+        time.sleep(1)
     self.device.close()
     super()._cleanup()

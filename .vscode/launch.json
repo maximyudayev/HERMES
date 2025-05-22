@@ -466,10 +466,13 @@
 				"--logging_spec", "stream_period_s=30", "stream_hdf5", "video_codec_config_filepath=resources/codecs/backpack_h264_qsv.yml",
 				"--producer_specs",
 				"class=AwindaStreamer",
-          "device_mapping=\"pelvis:00B4D3E4;upper_leg_right:00B4D3D7;lower_leg_right:00B4D3E2;foot_right:00B4D3DD;upper_leg_left:00B4D3E7;lower_leg_left:00B4D3D4;foot_left:00B4D3D8\"",
+          "device_mapping=pelvis:00B4D3E4;upper_leg_right:00B4D3D7;lower_leg_right:00B4D3E2;foot_right:00B4D3DD;upper_leg_left:00B4D3E7;lower_leg_left:00B4D3D4;foot_left:00B4D3D8",
           "num_joints=7",
-          "sampling_rate_hz=100",
-          "radio_channel=15",
+          "sampling_rate_hz=60",
+          "radio_channel=11",
+        "class=ViconStreamer",
+          "device_mapping=0:0;1:1;2:2;3:3;4:4;5:5;6:6;7:7;8:8;9:9;10:10;11:11;12:12;13:13;14:14;15:15",
+        "class=TmsiStreamer",
       ],
       "env": {
         "PYTHONPATH": "${workspaceFolder}"

@@ -27,7 +27,7 @@
 
 from nodes.producers.Producer import Producer
 from streams import ViconStream
-from vicon_dssdk import ViconDataStream
+from handlers.vicon_dssdk import ViconDataStream
 from utils.print_utils import *
 from utils.zmq_utils import *
 import time
@@ -49,7 +49,7 @@ class ViconStreamer(Producer):
                logging_spec: dict,
                device_mapping: dict[str, str],
                sampling_rate_hz: int = 2000,
-               vicon_buffer_size: int = 1,
+               vicon_buffer_size: int = 10,
                vicon_ip: str = DNS_LOCALHOST,
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
@@ -118,7 +118,7 @@ class ViconStreamer(Producer):
     # Keep only EMG. This device was renamed in the Nexus SDK.
     # NOTE: When using analog connector and setting all channels as single device, 
     #       _devices contains just 1 device.
-    self._devices = [d for d in devices if d[0] == "Cometa EMG"]
+    self._devices = [d for d in devices if d[0] == "RE EMG"]
     return True
 
 
@@ -144,14 +144,15 @@ class ViconStreamer(Producer):
           samples.append(values)
         sample_block = np.array(samples)
 
-        for samples in sample_block.T: # TODO: check the dimension ordering -> should loop over time.
-          tag: str = "%s.data" % self._log_source_tag()
-          data = {
-            'emg': sample_block,
-            'counter': frame_number,
-            'latency': 0.0, # TODO: get latency measurement from Vicon?
-          }
-          self._publish(tag=tag, process_time_s=process_time_s, data={'vicon-data': data})
+        
+        tag: str = "%s.data" % self._log_source_tag()
+        for block in sample_block.T:
+            data = {
+              'emg': block.reshape(-1),
+              'counter': frame_number,
+              'latency': 0.0, # TODO: get latency measurement from Vicon?
+            }
+            self._publish(tag=tag, process_time_s=process_time_s, data={'vicon-data': data})
     except ViconDataStream.DataStreamException as e:
       print(e)
     finally:

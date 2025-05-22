@@ -95,9 +95,9 @@ class ParseNodeKwargs(argparse.Action):
         if key == 'class':
           id += 1
           new_items.append(dict([(key, val)]))
-        elif '"' in val:
+        elif ';' in val:
           new_items[id][key] = dict()
-          for pair_str in val.split('"')[1].split(';'):
+          for pair_str in val.split(';'):
             k, v = pair_str.split(':')
             new_items[id][key][k] = v
         elif ',' in val:

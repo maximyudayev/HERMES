@@ -77,6 +77,26 @@ class XsensFacade:
                                                           num_bits_timestamp=16)
     self._packet_queue = queue.Queue()
 
+  def on_each_packet_received(self, toa_s, device, packet) -> None:
+      if self._is_keep_data:
+        device_id: str = str(device.deviceId())
+        acc = packet.calibratedAcceleration()
+        gyr = packet.calibratedGyroscopeData()
+        mag = packet.calibratedMagneticField()
+        quaternion = packet.orientationQuaternion()
+        timestamp = packet.sampleTimeFine()
+        counter = packet.packetCounter()
+        data = {
+          "device_id":            device_id,
+          "acc":                  acc,
+          "gyr":                  gyr,
+          "mag":                  mag,
+          "quaternion":           quaternion,
+          "toa_s":                toa_s,
+          "timestamp":            timestamp,
+          "counter_onboard":      counter,
+        }
+        self._packet_queue.put({"key": device_id, "data": data, "counter": counter})
 
   def initialize(self) -> bool:
     self._is_measuring = True
@@ -103,26 +123,7 @@ class XsensFacade:
       print("Connected to %s"%device_id, flush=True)
       if all(self._device_connection_status.values()): self._is_all_connected_queue.put(True)
 
-    def on_each_packet_received(toa_s, device, packet) -> None:
-      if self._is_keep_data:
-        device_id: str = str(device.deviceId())
-        acc = packet.calibratedAcceleration()
-        gyr = packet.calibratedGyroscopeData()
-        mag = packet.calibratedMagneticField()
-        quaternion = packet.orientationQuaternion()
-        timestamp = packet.sampleTimeFine()
-        counter = packet.packetCounter()
-        data = {
-          "device_id":            device_id,
-          "acc":                  acc,
-          "gyr":                  gyr,
-          "mag":                  mag,
-          "quaternion":           quaternion,
-          "toa_s":                toa_s,
-          "timestamp":            timestamp,
-          "counter_onboard":      counter,
-        }
-        self._packet_queue.put({"key": device_id, "data": data, "counter": counter})
+    
 
     # Register event handler on the main device
     self._conn_callback = AwindaConnectivityCallback(on_wireless_device_connected=on_wireless_device_connected)
@@ -157,18 +158,22 @@ class XsensFacade:
     #   into aligned Deque datastructure.
     def funnel_packets(packet_queue: queue.Queue, timeout: float = 5.0):
       while True:
-        try:
-          next_packet = packet_queue.get(timeout=timeout)
-          self._buffer.plop(**next_packet)
-        except queue.Empty:
-          print("No more packets from Movella SDK, flush buffers into the output Queue.", flush=True)
-          self._buffer.flush()
+        if not self._is_keep_data: continue
+        else:
+          while True:
+            try:
+              next_packet = packet_queue.get(timeout=timeout)
+              self._buffer.plop(**next_packet)
+            except queue.Empty:
+              print("No more packets from Movella SDK, flush buffers into the output Queue.", flush=True)
+              self._buffer.flush()
+              break
           break
 
     self._packet_funneling_thread = threading.Thread(target=funnel_packets, args=(self._packet_queue,))
 
     # Register listener of new data
-    self._data_callback = AwindaDataCallback(on_each_packet_received=on_each_packet_received)
+    self._data_callback = AwindaDataCallback(on_each_packet_received=self.on_each_packet_received)
     self._master_device.addCallbackHandler(self._data_callback)
 
     # Put all devices connected to the Awinda station into Measurement Mode
