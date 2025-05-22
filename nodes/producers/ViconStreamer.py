@@ -27,7 +27,7 @@
 
 from nodes.producers.Producer import Producer
 from streams import ViconStream
-from handlers.vicon_dssdk import ViconDataStream
+from vicon_dssdk import ViconDataStream
 from utils.print_utils import *
 from utils.zmq_utils import *
 import time
@@ -92,13 +92,6 @@ class ViconStreamer(Producer):
 
     # Enable data output.
     self._client.EnableDeviceData()
-    # self._client.EnableCentroidData()
-
-    self._client.DisableSegmentData()
-    self._client.DisableMarkerData()
-    self._client.DisableUnlabeledMarkerData()
-    self._client.DisableMarkerRayData()
-    self._client.DisableCentroidData()
 
     # Set server push mode,
     #  server pushes frames to client buffer, TCP/IP buffer, then server buffer.
@@ -110,7 +103,7 @@ class ViconStreamer(Producer):
     while not is_has_frame:
       try:
         time.sleep(1.0)
-        if self._client.GetFrame() and self._client.GetDeviceNames():
+        if self._client.GetFrame():
           is_has_frame = True
       except ViconDataStream.DataStreamException as e:
         attempts -= 1
@@ -126,7 +119,6 @@ class ViconStreamer(Producer):
     # NOTE: When using analog connector and setting all channels as single device, 
     #       _devices contains just 1 device.
     self._devices = [d for d in devices if d[0] == "Cometa EMG"]
-    self._output_to_keep = ['EMG Channels']
     return True
 
 
@@ -138,41 +130,28 @@ class ViconStreamer(Producer):
   # Acquire data from the sensors until signalled externally to quit
   def _process_data(self) -> None:
     try:
-      if self._is_continue_capture:
-        is_has_frame = False
-        timeout = 50
-        while not is_has_frame:
-          try:
-            if self._client.GetFrame():
-              is_has_frame = True
-            timeout -= 1
-            if timeout < 0:
-              print('Failed to get frame')
-          except ViconDataStream.DataStreamException as e:
-            pass
+      # Grabbing new frame from Vicon server will raise exception once it closed.
+      self._client.GetFrame()
+      process_time_s = get_time()
+      frame_number = self._client.GetFrameNumber()
 
-        process_time_s = get_time()
-        frame_number = self._client.GetFrameNumber()
+      for device_name, device_type in self._devices:
+        device_output_details = self._client.GetDeviceOutputDetails(device_name)
 
-        for device_name, device_type in self._devices:
-          device_output_details = self._client.GetDeviceOutputDetails(device_name)
+        samples = []
+        for output_name, component_name, unit in device_output_details:
+          values, occluded = self._client.GetDeviceOutputValues(device_name, output_name, component_name)
+          samples.append(values)
+        sample_block = np.array(samples)
 
-          samples = []
-          for output_name, component_name, unit in device_output_details:
-            # NOTE: must set this ID in the Vicon software first.
-            if output_name not in self._output_to_keep: continue
-            values, occluded = self._client.GetDeviceOutputValues(device_name, output_name, component_name)
-            samples.append(values)
-          sample_block = np.array(samples)
-
-          for samples in sample_block.T: # TODO: check the dimension ordering -> should loop over time.
-            tag: str = "%s.data" % self._log_source_tag()
-            data = {
-              'emg': sample_block,
-              'counter': frame_number,
-              'latency': 0.0,
-            }
-            self._publish(tag=tag, process_time_s=process_time_s, data={'vicon-data': data})
+        for samples in sample_block.T: # TODO: check the dimension ordering -> should loop over time.
+          tag: str = "%s.data" % self._log_source_tag()
+          data = {
+            'emg': sample_block,
+            'counter': frame_number,
+            'latency': 0.0, # TODO: get latency measurement from Vicon?
+          }
+          self._publish(tag=tag, process_time_s=process_time_s, data={'vicon-data': data})
     except ViconDataStream.DataStreamException as e:
       print(e)
     finally:
