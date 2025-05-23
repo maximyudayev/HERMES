@@ -505,7 +505,8 @@ class Broker(BrokerInterface):
                port_sync_host: str = PORT_SYNC_HOST,
                port_sync_remote: str = PORT_SYNC_REMOTE,
                port_killsig: str = PORT_KILL,
-               is_master_broker: bool = False) -> None:
+               is_master_broker: bool = False,
+               external_gui_specs: dict = None) -> None:
 
     # Record various configuration options.
     self._host_ip = host_ip
@@ -517,6 +518,8 @@ class Broker(BrokerInterface):
     self._port_killsig = port_killsig
     self._node_specs = node_specs
     self._is_quit = False
+
+    self._external_gui_specs = external_gui_specs
 
     self._remote_pub_brokers: list[str] = []
     self._remote_sub_brokers: list[str] = []
@@ -736,7 +739,9 @@ class Broker(BrokerInterface):
                                                     self._port_backend,
                                                     self._port_frontend,
                                                     self._port_sync_host,
-                                                    self._port_killsig)) for spec in self._node_specs]
+                                                    self._port_killsig,
+                                                    self._external_gui_specs,
+                                                    )) for spec in self._node_specs]
     for p in self._processes: p.start()
 
 

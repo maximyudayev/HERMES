@@ -117,6 +117,12 @@ if __name__ == '__main__':
                       action=ParseNodeKwargs,
                       default=list(),
                       help='key-value pair tags detailing local pipeline Nodes of the host')
+  
+  parser.add_argument('--external_gui_specs',
+                      nargs='*',
+                      action=ParseExternalGUIKwargs,
+                      default=list(),
+                      help='key-value pair tags detailing local pipeline Nodes of the host')
 
   parser.add_argument('--config_file',
                       type=validate_path,
@@ -156,7 +162,7 @@ if __name__ == '__main__':
   log_history_filepath: str = os.path.join(log_dir, '%s.log'%args.host_ip)
 
   try:
-    os.makedirs(log_dir)
+    os.makedirs(log_dir, exist_ok=True) # TODO remove exists ok in future for safety reasons
   except OSError:
     exit("'%s' already exists. Update experiment YML file with correct data for this subject."%log_dir)
 
@@ -182,9 +188,12 @@ if __name__ == '__main__':
   consumer_specs: list[dict] = args.consumer_specs
   pipeline_specs: list[dict] = args.pipeline_specs
 
+  external_gui_specs: list[dict] = args.external_gui_specs
+
   # Create the broker and manage all the components of the experiment.
   local_broker: Broker = Broker(host_ip=args.host_ip,
                                 node_specs=producer_specs+consumer_specs+pipeline_specs,
+                                external_gui_specs=external_gui_specs,
                                 is_master_broker=args.is_master_broker)
 
   # Connect broker to remote publishers at the wearable PC to get data from the wearable sensors.

@@ -91,7 +91,6 @@ class Producer(Node):
                                             })
       self._delay_thread.start()
 
-
   # Instantiate Stream datastructure object specific to this Streamer.
   #   Should also be a class method to create Stream objects on consumers. 
   @classmethod

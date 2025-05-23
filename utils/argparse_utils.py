@@ -108,3 +108,11 @@ class ParseNodeKwargs(argparse.Action):
       items = getattr(namespace, self.dest, list())
       items.extend(new_items)
       setattr(namespace, self.dest, items)
+
+class ParseExternalGUIKwargs(argparse.Action):
+  def __call__(self, parser, namespace, values, option_string = None):
+    if isinstance(values, (list, tuple)):
+      setattr(namespace, self.dest, dict())
+      for value in values:
+        key, value = value.split('=')
+        getattr(namespace, self.dest)[key] = value

@@ -28,9 +28,10 @@
 			"justMyCode": false
 		},
     {
-      "name": "DAQ",
+      "name": "Local Pupil",
       "type": "debugpy",
       "request": "launch",
+      "cwd": "${workspaceFolder}",
       "program": "main.py",
       "args": [
         "--experiment", "project=Tests", "type=Pupil", "trial=0",
@@ -149,6 +150,7 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       },
+      "console": "integratedTerminal",
       "subProcess": true,
       "justMyCode": false
     },
@@ -180,22 +182,58 @@
       "name": "Local MvnAnalyze",
       "type": "debugpy",
       "request": "launch",
+      "cwd": "${workspaceFolder}",
       "program": "main.py",
       "args": [
-        "configs/RevalExo/backpack.yml"
+        "--experiment", "project=Tests", "type=MvnAnalyze", "trial=1",
+        "--host_ip", "127.0.0.1", "--is_master",
+        "--logging_spec", "stream_period_s=30", "stream_hdf5", "video_codec_config_filepath=resources/codecs/elitebook835_h264_amf.yml",
+        "--producer_specs",
+        "class=MvnAnalyzeStreamer",
+          "mvn_setup=full_body",
+          "sampling_rate_hz=60",
+          "is_euler=False",
+          "is_quaternion=True",
+          "is_joint_angles=True",
+          "is_linear_segments=True",
+          "is_angular_segments=True",
+          "is_motion_trackers=True",
+          "is_com=True",
+          "is_time_code=True",
       ],
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       },
+      "console": "integratedTerminal",
       "subProcess": true,
-      // "justMyCode": true,
+      "justMyCode": false
     },
     {
-      "name": "Pilot AidFOG",
+      "name": "Local Insole",
       "type": "debugpy",
       "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "main.py",
+      "args": [
+        "--experiment", "project=Tests", "type=Insole", "trial=1",
+        "--host_ip", "127.0.0.1", "--is_master",
+        "--logging_spec", "stream_period_s=30", "stream_hdf5", "video_codec_config_filepath=resources/codecs/elitebook835_h264_amf.yml",
+        "--producer_specs",
+        "class=InsoleStreamer",
+          "sampling_rate_hz=100",
+      ],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal",
+      "subProcess": true,
+      "justMyCode": false
+    },
+    {
+      "name": "Local Dummy",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
       "program": "main.py",
       "args": [
         "--experiment", "project=Tests", "type=Dummy", "trial=1",
@@ -277,6 +315,7 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       },
+			"console": "integratedTerminal",
       "subProcess": true,
 			"justMyCode": false
 		},
