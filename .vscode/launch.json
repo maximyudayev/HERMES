@@ -170,6 +170,9 @@
           "num_joints=7",
           "sampling_rate_hz=100",
           "radio_channel=15",
+        "--external_gui_specs",
+          "gui_ip=192.168.69.145",
+          "gui_port=12345"
       ],
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
