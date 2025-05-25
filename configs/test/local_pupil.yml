@@ -25,10 +25,13 @@
 #
 # ############
 
-project       : "DummyTest"
-trial_type    : "test" # recommend "test" for testing and "real" data
-subject_id    : 0 # UID of the subject
-trial_id      : 0 # UID of the trial
+experiment:
+  - "sample_project"
+  - "site_x"
+  - "subject_x"
+  - "visit_x"
+  - "task_x1"
+
 duration_s    : null
 
 print_status  : True
@@ -38,8 +41,8 @@ print_debug   : True
 host_ip : "127.0.0.1"
 is_master_broker: True
 
-remote_publisher_ips: []
 remote_subscriber_ips: []
+remote_publisher_ips: []
 
 is_remote_kill: False
 remote_kill_ip: null

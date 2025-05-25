@@ -27,7 +27,7 @@
 
 from nodes.producers.Producer import Producer
 from streams import EyeStream
-from handlers.PupilFacade import PupilFacade
+from handlers.PupilLabs.PupilFacade import PupilFacade
 from utils.zmq_utils import *
 import zmq
 
@@ -55,9 +55,9 @@ class EyeStreamer(Producer):
                is_stream_video_eye: bool = False, 
                is_stream_fixation: bool = False,
                is_stream_blinks: bool = False,
-               shape_video_world: tuple[int] = (1080,720,3),
-               shape_video_eye0: tuple[int] = (192,192,3),
-               shape_video_eye1: tuple[int] = (192,192,3),
+               shape_video_world: tuple[int, int, int] = (1080,720,3),
+               shape_video_eye0: tuple[int, int, int] = (192,192,3),
+               shape_video_eye1: tuple[int, int, int] = (192,192,3),
                fps_video_world: float = 30.0,
                fps_video_eye0: float = 120.0,
                fps_video_eye1: float = 120.0,
@@ -65,8 +65,6 @@ class EyeStreamer(Producer):
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
                port_pause: str = PORT_PAUSE,
-               print_status: bool = True,
-               print_debug: bool = False,
                timesteps_before_solidified: int = 0,
                **_) -> None:
 
@@ -104,11 +102,10 @@ class EyeStreamer(Producer):
                      logging_spec=logging_spec,
                      port_pub=port_pub,
                      port_sync=port_sync,
-                     port_killsig=port_killsig,
-                     print_status=print_status,
-                     print_debug=print_debug)
+                     port_killsig=port_killsig)
 
 
+  @classmethod
   def create_stream(cls, stream_info: dict) -> EyeStream:
     return EyeStream(**stream_info)
 
@@ -119,7 +116,6 @@ class EyeStreamer(Producer):
 
   def _connect(self) -> bool:
     # TODO: launch Pupil Capture process
-
     self._handler: PupilFacade = PupilFacade(is_binocular=self._is_binocular,
                                              is_stream_video_world=self._is_stream_video_world,
                                              is_stream_video_eye=self._is_stream_video_eye,
@@ -138,11 +134,12 @@ class EyeStreamer(Producer):
 
 
   def _process_data(self) -> None:
-    if self._is_continue_capture:
-      process_time_s, data = self._handler.process_data()
+    res = self._handler.process_data()
+    if res is not None:
+      process_time_s, data = res
       tag: str = "%s.data" % self._log_source_tag()
       self._publish(tag, process_time_s=process_time_s, data=data)
-    else:
+    elif not self._is_continue_capture:
       self._send_end_packet()
 
 

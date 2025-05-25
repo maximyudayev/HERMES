@@ -35,15 +35,15 @@ print_status  : True
 print_debug   : True
 
 
-host_ip : "192.168.69.103"
+host_ip : "192.168.0.103"
 is_master_broker: False
+
+remote_subscriber_ips:
+  - "192.168.0.100"
 remote_publisher_ips: []
-remote_subscriber_ips: 
-  - "192.168.69.100"
 
 is_remote_kill: True
-remote_kill_ip: "192.168.69.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
-is_master_broker: False
+remote_kill_ip: "192.168.0.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
 
 
 logging_spec:
@@ -59,7 +59,7 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_config_filepath : "resources/codecs/h264_qsv.yml"
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
@@ -77,7 +77,8 @@ producer_specs:
     master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
     num_joints        : 5
     sampling_rate_hz  : 60
-    is_get_orientation: False
+    payload_mode      : "RateQuantitieswMag"
+    filter_profile    : "General"
     is_sync_devices   : True
   
   # Stream from the Pupil Labs eye tracker, including gaze and video data.
@@ -95,7 +96,7 @@ producer_specs:
       - 720
       - 1280
       - 3
-    shape_video_eye0: 
+    shape_video_eye0:
       - 192
       - 192
       - 3

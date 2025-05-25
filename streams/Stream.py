@@ -29,12 +29,10 @@ from abc import ABC, abstractmethod
 
 import copy
 from collections import OrderedDict, deque
-from typing import Any, Iterable, Iterator, Mapping
-import cv2
+from typing import Any, Dict, Iterable, Iterator, Mapping
 import dash_bootstrap_components as dbc
 from threading import Lock
 
-from utils.dict_utils import convert_dict_values_to_str
 from utils.time_utils import get_time
 from utils.types import VIDEO_FORMAT, DataFifoDict, DeviceLockDict, ExtraDataInfoDict, NewDataDict, StreamInfoDict
 
@@ -58,18 +56,16 @@ class Stream(ABC):
   # Will store the class name of each sensor in HDF5 metadata,
   #   to facilitate recreating classes when replaying the logs later.
   # The following is the metadata key to store that information.
-  metadata_class_name_key = 'SensorStreamer class name'
+  metadata_class_name_key = 'Stream class name'
   # Will look for a special metadata key that labels data channels,
   #   to use for logging purposes and general user information.
   metadata_data_headings_key = 'Data headings'
 
-  _metadata: Mapping
   _data: DataFifoDict
   _streams_info: StreamInfoDict
   _locks: DeviceLockDict
 
   def __init__(self) -> None:
-    self._metadata = dict()
     self._data = dict()
     self._streams_info = dict()
     # NOTE: Lock used only to delegate access to the start of the FIFO
@@ -86,7 +82,7 @@ class Stream(ABC):
   # Computed based on how fast data becomes available to the data structure, hence suitable
   #   to measure frame rate on the subscriber, local or remote.
   @abstractmethod
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     pass
 
 
@@ -119,11 +115,11 @@ class Stream(ABC):
                  stream_name: str,
                  data_type: str,
                  sample_size: Iterable[int],
-                 sampling_rate_hz: float,
+                 sampling_rate_hz: float = 0.0,
                  is_measure_rate_hz: bool = False,
-                 data_notes: str | dict = {},
+                 data_notes: Mapping[str, str] = {},
                  is_video: bool = False,
-                 color_format: str = None,
+                 color_format: str | None = None,
                  is_audio: bool = False,
                  timesteps_before_solidified: int = 0,
                  extra_data_info: ExtraDataInfoDict = {}) -> None:
@@ -146,9 +142,10 @@ class Stream(ABC):
                        stream_name='process_time_s',
                        data_type='float64',
                        sample_size=(1,),
-                       sampling_rate_hz=0.0,
-                       data_notes='Time of arrival of the data point to the host PC, ' \
-                                  'to be used for aligned idexing of data between distributed hosts.')
+                       data_notes=OrderedDict([
+                         ('Description',
+                          'Time of arrival of the data point to the host PC, '
+                          'to be used for aligned idexing of data between distributed hosts.')]))
 
 
   def _add_stream(self,
@@ -156,11 +153,11 @@ class Stream(ABC):
                   stream_name: str,
                   data_type: str,
                   sample_size: Iterable[int],
-                  sampling_rate_hz: float,
+                  sampling_rate_hz: float = 0.0,
                   is_measure_rate_hz: bool = False,
-                  data_notes: str | dict = {},
+                  data_notes: Mapping[str, str] = {},
                   is_video: bool = False,
-                  color_format: str = None,
+                  color_format: str | None = None,
                   is_audio: bool = False,
                   timesteps_before_solidified: int = 0,
                   extra_data_info: ExtraDataInfoDict = {}) -> None:
@@ -172,7 +169,7 @@ class Stream(ABC):
       ('data_type', data_type),
       ('sample_size', sample_size),
       ('data_notes', data_notes),
-      ('sampling_rate_hz', sampling_rate_hz),
+      ('sampling_rate_hz', '%.2f'%sampling_rate_hz),
       ('is_measure_rate_hz', is_measure_rate_hz),
       ('is_video', is_video),
       ('is_audio', is_audio),
@@ -181,15 +178,17 @@ class Stream(ABC):
     # Record color formats to use by FFmpeg and OpenCV, for saving and displaying frames.
     if is_video:
       try:
-        video_format = VIDEO_FORMAT[color_format]
-        self._streams_info[device_name][stream_name]['ffmpeg_input_format'] = video_format.ffmpeg_input_format
-        self._streams_info[device_name][stream_name]['color_format'] = {'ffmpeg': video_format.ffmpeg_pix_fmt, 'cv2': video_format.cv2_cvt_color}
+        if color_format is not None:
+          video_format = VIDEO_FORMAT[color_format]
+          self._streams_info[device_name][stream_name]['ffmpeg_input_format'] = video_format.ffmpeg_input_format
+          self._streams_info[device_name][stream_name]['color_format'] = {'ffmpeg': video_format.ffmpeg_pix_fmt, 'cv2': video_format.cv2_cvt_color}
+        else: raise KeyError
       except KeyError:
         print("Color format %s is not supported when specifying video frame pixel color format on Stream."%color_format)
     # Some metadata to keep track of during running to measure the actual frame rate.
     if is_measure_rate_hz:
       # Set at start actual rate equal to desired sample rate
-      self._streams_info[device_name][stream_name]['actual_rate_hz'] = self._streams_info[device_name][stream_name]['sampling_rate_hz']
+      self._streams_info[device_name][stream_name]['actual_rate_hz'] = sampling_rate_hz
       # Create a circular buffer of 1 second, w.r.t. desired sample rate
       circular_buffer_len: int = max(round(sampling_rate_hz), 1)
       self._streams_info[device_name][stream_name]['dt_circular_buffer'] = list([1/sampling_rate_hz] * circular_buffer_len)
@@ -261,7 +260,7 @@ class Stream(ABC):
   def pop_data(self, 
                device_name: str, 
                stream_name: str,
-               num_oldest_to_pop: int = None,
+               num_oldest_to_pop: int | None = None,
                is_flush: bool = False) -> Iterator[Any]:
     # O(1) complexity to check length of a Deque.
     num_available: int = len(self._data[device_name][stream_name])
@@ -288,7 +287,7 @@ class Stream(ABC):
   def peek_data_new(self,
                     device_name: str,
                     stream_name: str,
-                    num_newest_to_peek: int = None) -> Iterator[Any]:
+                    num_newest_to_peek: int | None = None) -> Iterator[Any]:
     self._locks[device_name].acquire()
     num_peekable: int = min(self._streams_info[device_name][stream_name]['timesteps_before_solidified'], 
                             len(self._data[device_name][stream_name]))
@@ -311,7 +310,7 @@ class Stream(ABC):
   def clear_data(self,
                  device_name: str,
                  stream_name: str,
-                 num_oldest_to_clear: int = None) -> None:
+                 num_oldest_to_clear: int | None = None) -> None:
     # Create the device/stream entry if it doesn't exist, else clear it.
     self._data.setdefault(device_name, OrderedDict())
     if stream_name not in self._data[device_name]:
@@ -343,32 +342,6 @@ class Stream(ABC):
         self.clear_data(device_name, stream_name)
 
 
-  # Get/set metadata
-  def get_metadata(self, 
-                   device_name: str = None, 
-                   only_str_values: bool = False) -> OrderedDict:
-    # Get metadata for all devices or for the specified device.
-    if device_name is None:
-      metadata = self._metadata
-    elif device_name in self._metadata:
-      metadata = self._metadata[device_name]
-    else:
-      metadata = OrderedDict()
-
-    # Add the class name.
-    class_name = type(self).__name__
-    if device_name is None:
-      for device_name_toUpdate in metadata:
-        metadata[device_name_toUpdate][self.metadata_class_name_key] = class_name
-    else:
-      metadata[self.metadata_class_name_key] = class_name
-
-    # Convert values to strings if desired.
-    if only_str_values:
-      metadata = convert_dict_values_to_str(metadata)
-    return metadata
-
-
   def get_num_devices(self) -> int:
     return len(self._streams_info)
 
@@ -380,7 +353,7 @@ class Stream(ABC):
 
   # Get the names of streams.
   # If device_name is None, will assume streams are the same for every device.
-  def get_stream_names(self, device_name: str = None) -> list[str]:
+  def get_stream_names(self, device_name: str | None = None) -> list[str]:
     if device_name is None:
       device_name = self.get_device_names()[0]
     return list(self._streams_info[device_name].keys())
@@ -402,12 +375,12 @@ class Stream(ABC):
   #     dt_circular_index,
   #     dt_running_sum,
   #     old_toa
-  def get_stream_info(self, device_name: str, stream_name: str) -> OrderedDict[str, Any]:
+  def get_stream_info(self, device_name: str, stream_name: str) -> Dict[str, Any]:
     return self._streams_info[device_name][stream_name]
 
 
   # Get all information about all streams.
-  def get_stream_info_all(self) -> OrderedDict[str, OrderedDict[str, OrderedDict[str, Any]]]:
+  def get_stream_info_all(self) -> StreamInfoDict:
     return copy.deepcopy(self._streams_info)
 
 

@@ -1,0 +1,10 @@
+# Optimized codec settings for AMD Ryzen 7 PRO 8840U on HP EliteBook 835 G11
+codec_name  : 'h264_amf'
+pix_format  : 'nv12'
+input_options: {}
+output_options:
+  "profile:v"   : 'high'
+  usage         : 'lowlatency_high_quality'
+  quality       : 'quality'
+  preset        : 'quality'
+  video_bitrate : '6M'

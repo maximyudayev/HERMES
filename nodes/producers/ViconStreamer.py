@@ -54,8 +54,6 @@ class ViconStreamer(Producer):
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               print_status: bool = True, 
-               print_debug: bool = False,
                **_):
     self._vicon_ip = vicon_ip
     self._vicon_buffer_size = vicon_buffer_size
@@ -68,13 +66,13 @@ class ViconStreamer(Producer):
     super().__init__(host_ip=host_ip,
                      stream_info=stream_info,
                      logging_spec=logging_spec,
+                     sampling_rate_hz=100, # Vicon sends packets in bursts at 100 Hz.
                      port_pub=port_pub,
                      port_sync=port_sync,
-                     port_killsig=port_killsig,
-                     print_status=print_status,
-                     print_debug=print_debug)
+                     port_killsig=port_killsig)
 
 
+  @classmethod
   def create_stream(cls, stream_info: dict) -> ViconStream:  
     return ViconStream(**stream_info)
 
@@ -125,6 +123,7 @@ class ViconStreamer(Producer):
 
 
   def _keep_samples(self) -> None:
+    # NOTE: If _vicon_buffer_size == 1, the server buffers only the latest measurement -> no need to flush anything.
     pass
 
 

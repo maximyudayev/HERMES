@@ -38,12 +38,12 @@ print_debug   : True
 host_ip : "192.168.0.100"
 is_master_broker: True
 
-is_remote_kill: False
-remote_kill_ip: null
-
 remote_subscriber_ips: []
 remote_publisher_ips: # IPs of Brokers to listen to for data on some of desired topics
   - "192.168.0.103"
+
+is_remote_kill: False
+remote_kill_ip: null
 
 
 logging_spec:

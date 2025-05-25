@@ -43,8 +43,6 @@ class SingletonMeta(type):
 
 
 class SystemTime(metaclass=SingletonMeta):
-  _ref_time: float = None
-
   def __init__(self):
     self._ref_time = time.time() - perf_counter()
 
@@ -104,7 +102,7 @@ def get_time_str(time_s: float = get_time(),
 #  add the current UTC date then convert it to local time and return seconds since epoch.
 def get_time_s_from_utc_time_no_date_str(time_utc_str: str, 
                                          input_time_format: str = '%H:%M:%S.%f',
-                                         date_utc_str: str = None, 
+                                         date_utc_str: str | None = None, 
                                          input_date_format: str ='%Y-%m-%d') -> float:
   from_zone = tz.tzutc()
   to_zone = tz.tzlocal()
@@ -128,7 +126,7 @@ def get_time_s_from_utc_time_no_date_str(time_utc_str: str,
 #  add the current local date then return seconds since epoch.
 def get_time_s_from_local_str(time_local_str: str, 
                               input_time_format: str = '%H:%M:%S.%f',
-                              date_local_str: str = None, 
+                              date_local_str: str | None = None, 
                               input_date_format: str = '%Y-%m-%d') -> float:
   # Get the current local date if no date was provided.
   if date_local_str is None:

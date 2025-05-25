@@ -50,9 +50,7 @@ class DataLogger(Consumer):
                port_sub: str = PORT_FRONTEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               log_history_filepath: str = None,
-               print_status: bool = True,
-               print_debug: bool = False,
+               log_history_filepath: str | None = None,
                **_):
 
     # Inherits FSM and Consumer ZeroMQ functionality.
@@ -62,9 +60,7 @@ class DataLogger(Consumer):
                      port_sub=port_sub,
                      port_sync=port_sync,
                      port_killsig=port_killsig,
-                     log_history_filepath=log_history_filepath,
-                     print_status=print_status,
-                     print_debug=print_debug)
+                     log_history_filepath=log_history_filepath)
 
 
   def _cleanup(self):

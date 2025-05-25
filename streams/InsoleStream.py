@@ -41,7 +41,7 @@ class InsoleStream(Stream):
                sampling_rate_hz: int = 100,
                timesteps_before_solidified: int = 0,
                update_interval_ms: int = 100,
-               transmission_delay_period_s: int = None,
+               transmission_delay_period_s: int | None = None,
                **_) -> None:
     super().__init__()
     self._sampling_rate_hz = sampling_rate_hz
@@ -51,6 +51,12 @@ class InsoleStream(Stream):
 
     self._define_data_notes()
 
+    self.add_stream(device_name='insoles-data',
+                    stream_name='toa_s',
+                    data_type='float64',
+                    sample_size=(1,),
+                    sampling_rate_hz=self._sampling_rate_hz,
+                    data_notes=self._data_notes['insoles-data']['toa_s'])
     self.add_stream(device_name='insoles-data',
                     stream_name='timestamp',
                     data_type='float32',
@@ -114,12 +120,12 @@ class InsoleStream(Stream):
       self.add_stream(device_name='insoles-connection',
                       stream_name='transmission_delay',
                       data_type='float32',
-                      sample_size=(1),
+                      sample_size=(1,),
                       sampling_rate_hz=1.0/self._transmission_delay_period_s,
                       data_notes=self._data_notes['insoles-connection']['transmission_delay'])
 
 
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {'insoles-data': super()._get_fps('insoles-data', 'timestamp')}
 
 
@@ -146,6 +152,10 @@ class InsoleStream(Stream):
 
     self._data_notes['insoles-data']['timestamp'] = OrderedDict([
       ('Description', 'Device time of sampling of the insole data'),
+    ])
+    self._data_notes['insoles-data']['toa_s'] = OrderedDict([
+      ('Description', 'Time of arrival of the packet w.r.t. system clock.'),
+      ('Units', 'seconds'),
     ])
     self._data_notes['insoles-data']['foot_pressure_left'] = OrderedDict([
       ('Description', 'Pressure across the 16 strain gauge grid across the left insole'),

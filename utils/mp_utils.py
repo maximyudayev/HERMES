@@ -25,7 +25,6 @@
 #
 # ############
 
-from dataclasses import dataclass
 from typing import Callable
 
 def launch_callable(obj: Callable, *args):

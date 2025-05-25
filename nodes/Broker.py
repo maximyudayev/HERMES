@@ -109,7 +109,7 @@ class BrokerInterface(ABC):
     pass
 
   @abstractmethod
-  def _get_duration(self) -> float:
+  def _get_duration(self) -> float | None:
     pass
 
   @abstractmethod
@@ -159,8 +159,8 @@ class BrokerInterface(ABC):
   @abstractmethod
   def _broker_packets(self,
                       poll_res: ZMQResult,
-                      on_data_received: Callable[[list[bytes]], None],
-                      on_subscription_changed: Callable[[list[bytes]], None]) -> None:
+                      on_data_received: Callable[[list[bytes]], None] = lambda _: None,
+                      on_subscription_changed: Callable[[list[bytes]], None] = lambda _: None) -> None:
     pass
 
   @abstractmethod
@@ -246,7 +246,7 @@ class SyncBrokerBarrierState(BrokerState):
     # Check every 5 seconds if other Brokers completed their setup and responded back.
     # Could be that no other Brokers exist.
     poll_res: list[tuple[zmq.SyncSocket, zmq.PollEvent]]
-    if poll_res := self._poller.poll(5000):
+    if poll_res := self._poller.poll(5000): # type: ignore
       socket, _ = poll_res[0]
       address, _, broker_name, cmd = socket.recv_multipart()
       broker_name = broker_name.decode('utf-8')
@@ -319,14 +319,14 @@ class StartState(BrokerState):
 class RunningState(BrokerState):
   def __init__(self, context):
     super().__init__(context)
-    if self._context._get_duration() is not None:
-      self._is_continue_fn = lambda: get_time() < (self._context._get_start_time() + self._context._get_duration())
+    if (duration_s := self._context._get_duration()) is not None:
+      self._is_continue_fn = lambda: get_time() < (self._context._get_start_time() + duration_s)
     else:
       self._is_continue_fn = lambda: True
 
 
   def run(self) -> None:
-    poll_res: ZMQResult = self._context._poll(1000)
+    poll_res: ZMQResult = self._context._poll(5000)
     self._context._broker_packets(poll_res, on_subscription_changed=self._on_subscription_added)
     if self._context._check_for_kill(poll_res): self.kill()
 
@@ -373,7 +373,7 @@ class JoinNodeBarrierState(BrokerState):
   #   Continue brokering packets until signalled by all publishers that there will be no more packets.
   #   Append a frame to the ZeroMQ message that indicates the last message from the sensor.
   def run(self) -> None:
-    poll_res: ZMQResult = self._context._poll(1000)
+    poll_res: ZMQResult = self._context._poll(5000)
     # Brokers packets and releases local Producer Nodes in a callback once it published the end packet.
     self._context._broker_packets(poll_res, on_data_received=self._on_is_end_packet)
     # Checks if poll event was triggered by a local Node initiating closing.
@@ -459,7 +459,7 @@ class JoinBrokerBarrierState(BrokerState):
 
     # Check every 5 seconds if other Brokers completed their cleanup and responded back ready to exit.
     poll_res: list[tuple[zmq.SyncSocket, zmq.PollEvent]]
-    if poll_res := self._poller.poll(5000):
+    if poll_res := self._poller.poll(5000): # type: ignore
       socket, _ = poll_res[0]
       address, _, broker_name, cmd = socket.recv_multipart()
       broker_name = broker_name.decode('utf-8')
@@ -483,7 +483,7 @@ class JoinBrokerBarrierState(BrokerState):
 
 
   def is_continue(self) -> bool:
-    return self._brokers
+    return not not self._brokers
 
 
   def kill(self) -> None:
@@ -505,9 +505,7 @@ class Broker(BrokerInterface):
                port_sync_host: str = PORT_SYNC_HOST,
                port_sync_remote: str = PORT_SYNC_REMOTE,
                port_killsig: str = PORT_KILL,
-               is_master_broker: bool = None,
-               print_status: bool = True,
-               print_debug: bool = False) -> None:
+               is_master_broker: bool = False) -> None:
 
     # Record various configuration options.
     self._host_ip = host_ip
@@ -517,8 +515,6 @@ class Broker(BrokerInterface):
     self._port_sync_host = port_sync_host
     self._port_sync_remote = port_sync_remote
     self._port_killsig = port_killsig
-    self._print_status = print_status
-    self._print_debug = print_debug
     self._node_specs = node_specs
     self._is_quit = False
 
@@ -611,7 +607,7 @@ class Broker(BrokerInterface):
   # The main run method
   #   Runs continuously until the user ends the experiment or after the specified duration.
   #   The duration start to count only after all Nodes established communication and synced.
-  def __call__(self, duration_s: float = None) -> None:
+  def __call__(self, duration_s: float | None = None) -> None:
     self._duration_s = duration_s
     while self._state.is_continue() and not self._is_quit:
       self._state.run()

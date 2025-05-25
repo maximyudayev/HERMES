@@ -77,7 +77,8 @@ producer_specs:
     master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
     num_joints        : 5
     sampling_rate_hz  : 60
-    is_get_orientation: False
+    payload_mode      : "RateQuantitieswMag"
+    filter_profile    : "General"
     is_sync_devices   : True
   
   # Stream from the Pupil Labs eye tracker, including gaze and video data.

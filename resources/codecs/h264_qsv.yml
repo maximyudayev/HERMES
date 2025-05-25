@@ -1,6 +1,0 @@
-codec_name  : 'h264_qsv'
-pix_format  : 'nv12'
-options:
-  preset    : 'veryfast'
-  profile   : 'main'
-  scenario  : 'livestreaming'

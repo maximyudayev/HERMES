@@ -47,8 +47,6 @@ class DummyPipeline(Pipeline):
                port_sub: str = PORT_FRONTEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               print_status: bool = True,
-               print_debug: bool = False,
                **_):
 
     # Abstract class will call concrete implementation's creation methods
@@ -60,11 +58,10 @@ class DummyPipeline(Pipeline):
                      port_pub=port_pub,
                      port_sub=port_sub,
                      port_sync=port_sync,
-                     port_killsig=port_killsig,
-                     print_status=print_status, 
-                     print_debug=print_debug)
+                     port_killsig=port_killsig)
 
 
+  @classmethod
   def create_stream(cls, stream_info: dict) -> DummyStream:
     return DummyStream(**stream_info)
 

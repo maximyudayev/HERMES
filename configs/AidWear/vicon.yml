@@ -35,15 +35,15 @@ print_status  : True
 print_debug   : True
 
 
-host_ip : "192.168.69.104"
+host_ip : "192.168.0.104"
 is_master_broker: False
-remote_broker_ips: []
+
 remote_subscriber_ips:
-  - "192.168.69.100"
+  - "192.168.0.100"
+remote_publisher_ips: []
 
 is_remote_kill: True
-remote_kill_ip: "192.168.69.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
-is_master_broker: False
+remote_kill_ip: "192.168.0.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
 
 
 logging_spec:

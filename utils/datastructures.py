@@ -43,13 +43,13 @@ class BufferInterface(ABC):
 
 class NonOverflowingCounterConverter:
   def __init__(self,
-               keys: Iterable,
+               keys: Iterable[Any],
                num_bits_counter: int):
     self._counter_limit = 2**num_bits_counter
     self._counter_to_nonoverflowing_counter_fn: Callable = self._foo
     self._start_counters = OrderedDict([(k, None) for k in keys])
     self._previous_counters = OrderedDict([(k, None) for k in keys])
-    self._counters = OrderedDict([(k, None) for k in keys])
+    self._counters: OrderedDict[Any, int | None] = OrderedDict([(k, None) for k in keys])
     self._start_counter = None
 
 
@@ -88,7 +88,7 @@ class TimestampToCounterConverter:
     self._counter_from_timestamp_fn: Callable = self._foo
     self._first_timestamps = OrderedDict([(k, None) for k in keys])
     self._previous_timestamps = OrderedDict([(k, None) for k in keys])
-    self._counters = OrderedDict([(k, None) for k in keys])
+    self._counters: OrderedDict[Any, int | None] = OrderedDict([(k, None) for k in keys])
 
 
   # Sets the start time according to the first received packet and switches
@@ -129,7 +129,7 @@ class TimestampToCounterConverter:
     return self._counters[key]
 
 
-  def _bar(self, key, timestamp) -> int:
+  def _bar(self, key, timestamp) -> int | None:
     # Measure the dt between 2 measurements w.r.t. sensor device time and the max value before overlow.
     #   dt > 0 always thanks to modulo, even if sensor on-board clock overflows.
     delta_ticks = (timestamp - self._previous_timestamps[key]) % self._timestamp_limit
@@ -154,7 +154,7 @@ class AlignedFifoBuffer(BufferInterface):
 
 
   # Adding packets to the datastructure is asynchronous for each key.
-  def plop(self, key: str, data: dict, counter: int):
+  def plop(self, key: str, data: dict, counter: int): # type: ignore
     # Add counter into the data payload to retreive on the reader. (Useful for time->counter converted buffer).
     data["counter"] = counter
     # The snapshot had not been read yet, even if measurement is stale (arrived later than specified), 
@@ -215,7 +215,7 @@ class TimestampAlignedFifoBuffer(AlignedFifoBuffer):
 
 
   # Override parent method.
-  def plop(self, key: str, data: dict, timestamp: float) -> None:
+  def plop(self, key: str, data: dict, timestamp: float) -> None: # type: ignore
     # Calculate counter from timestamp and local datastructure to avoid race condition.
     counter = self._converter._counter_from_timestamp_fn(key, timestamp)
     if counter is not None:

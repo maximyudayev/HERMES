@@ -56,27 +56,28 @@ class ViconStream(Stream):
     self.add_stream(device_name='vicon-data',
                     stream_name='emg',
                     data_type='float32',
-                    sample_size=(self._num_devices),
+                    sample_size=(self._num_devices,),
                     sampling_rate_hz=sampling_rate_hz,
                     is_measure_rate_hz=True)
     self.add_stream(device_name='vicon-data',
                     stream_name='counter',
                     data_type='float32',
-                    sample_size=(1),
+                    sample_size=(1,),
                     sampling_rate_hz=sampling_rate_hz)
     self.add_stream(device_name='vicon-data',
                     stream_name='latency',
                     data_type='float32',
-                    sample_size=(1),
+                    sample_size=(1,),
                     sampling_rate_hz=sampling_rate_hz)
 
 
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {'vicon-data': super()._get_fps('vicon-data', 'emg')}
 
 
   def build_visulizer(self) -> dbc.Row:
     emg_plot = LinePlotVisualizer(stream=self,
+                                  unique_id='vicon-emg',
                                   data_path={'vicon-data': ['emg']},
                                   legend_names=list(self._device_mapping.keys()),
                                   plot_duration_timesteps=self._timesteps_before_solidified,

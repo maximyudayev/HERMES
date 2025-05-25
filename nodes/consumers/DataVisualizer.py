@@ -51,12 +51,10 @@ class DataVisualizer(Consumer):
                host_ip: str,
                stream_specs: list[dict],
                logging_spec: dict,
-               log_history_filepath: str = None,
+               log_history_filepath: str | None = None,
                port_sub: str = PORT_FRONTEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               print_status: bool = True, 
-               print_debug: bool = False, 
                **_):
 
     super().__init__(host_ip=host_ip,
@@ -65,9 +63,7 @@ class DataVisualizer(Consumer):
                      port_sub=port_sub,
                      port_sync=port_sync,
                      port_killsig=port_killsig,
-                     log_history_filepath=log_history_filepath,
-                     print_status=print_status,
-                     print_debug=print_debug)
+                     log_history_filepath=log_history_filepath)
 
     # Init all Dash widgets before launching the server and the GUI thread.
     # NOTE: order Dash widgets in the order of streamer specs provided upstream.

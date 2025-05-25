@@ -1,0 +1,9 @@
+# Optimized codec settings for Intel Core i7-1360P on Intel NUC13ANKi70000
+codec_name  : 'h264_qsv'
+pix_format  : 'nv12'
+input_options: {}
+output_options:
+  preset        : 'veryslow'
+  "profile:v"   : 'high'
+  scenario      : 'livestreaming'
+  video_bitrate : '6M'

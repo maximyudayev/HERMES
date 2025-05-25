@@ -166,11 +166,7 @@ class Node(NodeInterface):
   def __init__(self,
                host_ip: str = DNS_LOCALHOST,
                port_sync: str = PORT_SYNC_HOST,
-               port_killsig: str = PORT_KILL,
-               print_status: bool = True,
-               print_debug: bool = False) -> None:
-    self._print_status = print_status
-    self._print_debug = print_debug
+               port_killsig: str = PORT_KILL) -> None:
     self._host_ip = host_ip
     self._port_sync = port_sync
     self._port_killsig = port_killsig
@@ -183,7 +179,7 @@ class Node(NodeInterface):
 
 
   @property
-  def _is_done(self) -> str:
+  def _is_done(self) -> bool:
     return self.__is_done
   
 
@@ -251,7 +247,7 @@ class Node(NodeInterface):
   # Listens for events when new data is received from or when new data can be written to sockets,
   #   based on the active Poller settings of the Node implementation.
   def _poll(self) -> tuple[list[zmq.SyncSocket], list[int]]:
-    return tuple(zip(*(self._poller.poll())))
+    return tuple(zip(*(self._poller.poll()))) # type: ignore
 
 
   # Actions to perform on the poll event.

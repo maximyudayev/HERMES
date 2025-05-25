@@ -36,7 +36,7 @@ import dash_bootstrap_components as dbc
 ###############################################
 class CyberlegStream(Stream):
   def __init__(self, 
-               sampling_rate_hz: int = 0,
+               sampling_rate_hz: int = 10,
                **_) -> None:
     super().__init__()
 
@@ -53,7 +53,7 @@ class CyberlegStream(Stream):
                     sampling_rate_hz=sampling_rate_hz)
 
 
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {'cyberleg-data': super()._get_fps('cyberleg-data', 'activity')}
 
 

@@ -25,7 +25,6 @@
 #
 # ############
 
-from typing import Any, Callable
 from nodes.Node import Node
 from nodes.producers.Producer import Producer
 from handlers.LoggingHandler import Logger
@@ -55,23 +54,19 @@ class Pipeline(Node):
                port_pub: str = PORT_BACKEND,
                port_sub: str = PORT_FRONTEND,
                port_sync: str = PORT_SYNC_HOST,
-               port_killsig: str = PORT_KILL,
-               print_status: bool = True,
-               print_debug: bool = False) -> None:
+               port_killsig: str = PORT_KILL) -> None:
     # import within this context to avoid circular imports.
     from nodes.pipelines import PIPELINES
     from nodes.producers import PRODUCERS
 
     super().__init__(host_ip=host_ip,
-                     port_sync=port_sync, 
-                     port_killsig=port_killsig, 
-                     print_status=print_status,
-                     print_debug=print_debug)
+                     port_sync=port_sync,
+                     port_killsig=port_killsig)
     self._port_pub = port_pub
     self._port_sub = port_sub
     self._is_continue_produce = True
     self._is_more_data_in = True
-    self._publish_fn: Callable[[str, dict[str, Any]], None] = lambda tag, kwargs: None
+    self._publish_fn = lambda tag, kwargs: None
 
     # Data structure for keeping track of data.
     self._out_stream: Stream = self.create_stream(stream_info)
@@ -86,8 +81,8 @@ class Pipeline(Node):
       class_args = stream_spec.copy()
       del(class_args['class'])
       # Create the class object.
-      class_type: type[Producer] = {**PRODUCERS,**PIPELINES}[class_name]
-      class_object: Stream = class_type.create_stream(class_type, class_args)
+      class_type: type[Producer] | type[Pipeline] = {**PRODUCERS,**PIPELINES}[class_name]
+      class_object: Stream = class_type.create_stream(class_args)
       # Store the streamer object.
       self._in_streams.setdefault(class_type._log_source_tag(), class_object)
       self._is_producer_ended.setdefault(class_type._log_source_tag(), False)
@@ -175,10 +170,10 @@ class Pipeline(Node):
     elif len(message) == 3 and CMD_END.encode('utf-8') in message:
       topic = message[0]
       topic_tree: list[str] = topic.decode('utf-8').split('.')
-      self._is_producer_ended[topic[0]] = True
+      self._is_producer_ended[topic_tree[0]] = True
       if all(list(self._is_producer_ended.values())):
         self._is_more_data_in = False
-        not self._is_more_data_in and not self._is_continue_produce
+        # not self._is_more_data_in and not self._is_continue_produce
 
 
   # Iteration loop logic for the worker.

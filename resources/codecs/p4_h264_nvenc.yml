@@ -1,0 +1,11 @@
+# Optimized codec settings for NVIDIA Tesla P4 GPU
+codec_name  : 'h264_nvenc'
+pix_format  : 'cuda'
+input_options:
+  hwaccel               : 'cuda'
+  hwaccel_output_format : 'cuda'
+output_options:
+  preset                : 'p7'
+  video_bitrate         : '6M'
+  tune                  : 'hq'
+  filter_complex        : "[0:v]hwupload_cuda[1];[1]scale_cuda=1920:1080"

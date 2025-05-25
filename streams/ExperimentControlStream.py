@@ -60,7 +60,7 @@ class ExperimentControlStream(Stream):
     return dbc.Row([control_gui.layout])
 
 
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {'experiment': None}
 
 

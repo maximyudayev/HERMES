@@ -29,6 +29,7 @@ from nodes.pipelines.Pipeline import Pipeline
 
 import time
 
+from streams.PytorchStream import PytorchStream
 from utils.zmq_utils import *
 
 
@@ -52,8 +53,6 @@ class PytorchWorker(Pipeline):
                port_sub: str = PORT_FRONTEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               print_status: bool = True,
-               print_debug: bool = False,
                **_):
 
     # Initialize any state that the sensor needs.
@@ -68,13 +67,12 @@ class PytorchWorker(Pipeline):
                      port_pub=port_pub,
                      port_sub=port_sub,
                      port_sync=port_sync,
-                     port_killsig=port_killsig,
-                     print_status=print_status, 
-                     print_debug=print_debug)
+                     port_killsig=port_killsig)
 
 
-  def create_stream(cls, stream_info: dict):
-    pass
+  @classmethod
+  def create_stream(cls, stream_info: dict) -> PytorchStream:
+    return PytorchStream(**stream_info)
 
 
   def _process_data(self) -> None:

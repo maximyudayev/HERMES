@@ -1,0 +1,85 @@
+############
+#
+# Copyright (c) 2024 Maxim Yudayev and KU Leuven eMedia Lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Created 2024-2025 for the KU Leuven AidWear, AidFOG, and RevalExo projects
+# by Maxim Yudayev [https://yudayev.com].
+#
+# ############
+
+project       : "DummyTest"
+trial_type    : "test" # recommend "test" for testing and "real" data
+subject_id    : 0 # UID of the subject
+trial_id      : 0 # UID of the trial
+duration_s    : null
+
+print_status  : True
+print_debug   : True
+
+
+host_ip : "127.0.0.1"
+is_master_broker: True
+
+remote_publisher_ips: []
+remote_subscriber_ips: []
+
+is_remote_kill: False
+remote_kill_ip: null
+
+
+logging_spec:
+  stream_period_s     : 30
+  
+  stream_hdf5         : True
+  stream_csv          : False
+  stream_video        : False
+  stream_audio        : False
+
+  dump_csv            : False
+  dump_hdf5           : False
+  dump_video          : False
+  dump_audio          : False
+
+  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_num_cpu : 1
+
+  audio_format        : "wav" # currently only supports WAV
+
+
+producer_specs:
+  # Stream from one or more cameras.
+  - class: "MvnAnalyzeStreamer"
+    mvn_setup           : "full_body"
+    sampling_rate_hz    : 60
+    is_euler            : False
+    is_quaternion       : True
+    is_joint_angles     : True
+    is_linear_segments  : True
+    is_angular_segments : True
+    is_motion_trackers  : True
+    is_com              : True
+    is_time_code        : True
+
+
+consumer_specs: [] # DataVisualizer and DataLogger are mutually exclusive, select only one.
+
+
+pipeline_specs: []

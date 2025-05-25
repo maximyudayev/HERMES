@@ -38,8 +38,8 @@ print_debug   : True
 host_ip : "127.0.0.1"
 is_master_broker: True
 
-remote_publisher_ips: []
 remote_subscriber_ips: []
+remote_publisher_ips: []
 
 is_remote_kill: False
 remote_kill_ip: null
@@ -89,9 +89,8 @@ consumer_specs:
       dump_video          : False
       dump_audio          : False
 
-      video_codec             : 'h264_qsv'
-      video_codec_num_cpu     : 1
-      video_codec_pix_format  : 'nv12'
+      video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+      video_codec_num_cpu : 1
 
       audio_format        : "wav" # currently only supports WAV
 

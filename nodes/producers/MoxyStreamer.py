@@ -77,12 +77,10 @@ class MoxyStreamer(Producer):
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               transmit_delay_sample_period_s: float = None,
-               print_status: bool = True,
-               print_debug: bool = False,
+               transmit_delay_sample_period_s: float = float('nan'),
                **_):
     self._devices = devices
-    self._previous_counters: dict[str, int] = {dev: None for dev in devices}
+    self._previous_counters: dict[str, int | None] = {dev: None for dev in devices}
 
     stream_info = {
       "devices": devices,
@@ -92,14 +90,14 @@ class MoxyStreamer(Producer):
     super().__init__(host_ip=host_ip,
                      stream_info=stream_info,
                      logging_spec=logging_spec,
+                     sampling_rate_hz=sampling_rate_hz,
                      port_pub=port_pub,
                      port_sync=port_sync,
                      port_killsig=port_killsig,
-                     transmit_delay_sample_period_s=transmit_delay_sample_period_s,
-                     print_status=print_status,
-                     print_debug=print_debug)
+                     transmit_delay_sample_period_s=transmit_delay_sample_period_s)
 
 
+  @classmethod
   def create_stream(cls, stream_info: dict) -> MoxyStream:
     return MoxyStream(**stream_info)
 
@@ -128,11 +126,16 @@ class MoxyStreamer(Producer):
 
     self.scanner.on_found = on_found
     self.scanner.on_update = on_update
-    return self.node.discover_devices()
+    return self.node.discover_devices(self._devices)
 
 
   def _keep_samples(self) -> None:
-    pass
+    # Clear the buffer queue of accumulated values during the system bring-up.
+    try:
+      while True:
+        self.node._datas.get_nowait()
+    except queue.Empty:
+      return
 
 
   def _process_data(self):

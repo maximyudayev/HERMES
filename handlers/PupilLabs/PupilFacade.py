@@ -25,9 +25,9 @@
 #
 # ############
 
-from collections import OrderedDict
-import time
-from typing import Callable
+import queue
+import threading
+from typing import Any, Callable, Mapping
 
 import msgpack
 import numpy as np
@@ -63,7 +63,6 @@ class PupilFacade:
     self._start_index_world = None
     self._previous_index_eye = [0] * (2 if is_binocular else 1)
     self._previous_index_world = 0
-    self._is_keep_data = False
 
     # Connect to the Pupil Capture socket.
     self._zmq_context = zmq.Context.instance()
@@ -87,43 +86,49 @@ class PupilFacade:
     if self._is_stream_blinks:
       self._topics.append('blinks')
 
+    self._is_more = True
     self._receiver: zmq.SyncSocket = self._zmq_context.socket(zmq.SUB)
     self._receiver.connect('tcp://%s:%s' % (self._pupil_capture_ip, self._ipc_sub_port))
-    for t in self._topics: self._receiver.subscribe(t)
+    self._receive_queue: queue.Queue[tuple[list[bytes], float, float]] = queue.Queue()
+    self._receive_thread = threading.Thread(target=self._receive_data)
 
 
+  # Start enqueing packets only after the Nodes synced.
   def keep_data(self) -> None:
-    self._is_keep_data = True
+    for t in self._topics: self._receiver.subscribe(t)
+    self._receive_thread.start()
+
+
+  def _receive_data(self):
+    poller = zmq.Poller()
+    poller.register(self._receiver, zmq.POLLIN)
+    is_continue = True
+    while is_continue:
+      poll_res = poller.poll(5)
+      if len(poll_res):
+        data = self._receiver.recv_multipart()
+        time_s = get_time()
+        device_time_s = self._get_device_time()
+        self._receive_queue.put((data, time_s, device_time_s))
+      elif not self._is_more:
+        poller.unregister(self._receiver)
+        is_continue = False
 
 
   # Receive data and return a parsed dictionary.
-  # The data dict will have keys 'gaze', 'pupil', 'video-world', 'video-worldGaze', and 'video-eye'
-  #  where each will map to a dict or to None if it was not applicable.
-  # The dict keys correspond to device names after the 'eye-tracking-' prefix.
-  #   Each sub-dict has keys that are stream names.
-  def process_data(self) -> tuple[float, OrderedDict]:
-    data = self._receiver.recv_multipart()
-    time_s = get_time()
-    device_time_s = self._get_device_time()
-
-    gaze_items = None
-    pupil_items = None
-    fixation_items = None
-    blinks_items = None
-    video_world_items = None
-    video_eye_items = None
-    time_items = None
-
-    topic = data[0].decode('utf-8')
-
-    if self._is_keep_data:
-      time_items = [
-        ('device_time_s', device_time_s)
-      ]
+  def process_data(self) -> tuple[float, Mapping[str, Mapping[str, Any]]] | None:
+    try:
+      data, time_s, device_time_s = self._receive_queue.get(timeout=5)
+      topic = data[0].decode('utf-8')
+      output: dict[str, dict[str, Any]] = {
+        'eye-time': {
+          'device_time_s': device_time_s
+        }
+      }
       # Process gaze/pupil data
       # Note it works for both, mono- and binocular gaze data
       if topic in ['gaze.2d.0.', 'gaze.3d.0.','gaze.2d.01.', 'gaze.3d.01.']: # former two - monocular, latter two - binocular 
-        payload = msgpack.loads(data[1])
+        payload: dict[str, Any] = msgpack.loads(data[1]) # type: ignore
         pupil_data = payload['base_data'] # pupil detection on which the gaze detection was based (just use the first one for now if there were multiple)
         # Record data common to both 2D and 3D formats
         gaze_items = [
@@ -164,84 +169,74 @@ class PupilFacade:
             ('ellipse_axes'     , [pupil['ellipse']['axes'] for pupil in pupil_data]),   # pixels, in image space
             ('ellipse_angle_deg', [pupil['ellipse']['angle'] for pupil in pupil_data]),  # degrees
           ])
-
+        output['eye-pupil'] = dict(pupil_items)
+        output['eye-gaze'] = dict(gaze_items)
       # Process fixations data
       elif topic == 'fixations':
-        payload = msgpack.load(data[1])
-        fixation_items = [
-          ('id'             , payload['id']),             # int
-          ('timestamp'      , payload['timestamp']),      # float
-          ('norm_pos'       , payload['norm_pos']),       # float[2]
-          ('dispersion'     , payload['dispersion']),     # float
-          ('duration'       , payload['duration']),       # float
-          ('confidence'     , payload['confidence']),     # float
-          ('gaze_point_3d'  , payload['gaze_point_3d']),  # float[3]
-        ]
-
+        payload: dict[str, Any] = msgpack.loads(data[1]) # type: ignore
+        output['eye-fixations'] = {
+          'id':             payload['id'],             # int
+          'timestamp':      payload['timestamp'],      # float
+          'norm_pos':       payload['norm_pos'],       # float[2]
+          'dispersion':     payload['dispersion'],     # float
+          'duration':       payload['duration'],       # float
+          'confidence':     payload['confidence'],     # float
+          'gaze_point_3d':  payload['gaze_point_3d'],  # float[3]
+        }
       # Process blinks data
       elif topic == 'blinks': 
-        payload = msgpack.loads(data[1])
-        blinks_items = [
-          ('timestamp'  , payload['timestamp']),  # float
-          ('confidence' , payload['confidence']), # float
-        ]
-
+        payload: dict[str, Any] = msgpack.loads(data[1]) # type: ignore
+        output['eye-blinks'] = {
+          'timestamp':  payload['timestamp'],  # float
+          'confidence': payload['confidence'], # float
+        }
       # Process world video data
       elif topic == 'frame.world':
         # Prepare the metadata for the frame.
-        metadata = msgpack.loads(data[1])
+        metadata: dict[str, Any] = msgpack.loads(data[1]) # type: ignore
         if self._start_index_world is None: 
           self._start_index_world = metadata['index']
           is_keyframe = True
         else:
           is_keyframe = (metadata['index'] - self._previous_index_world) > 1 # NOTE: not safe against overflow, but uint64
         self._previous_index_world = metadata['index']
-        pts = metadata['index'] - self._start_index_world
+        frame_index = metadata['index'] - self._start_index_world
         # Decode the frame.
-        img_buffer = data[2]
-
-        # Prepare the output for the file writer.
-        video_world_items = [
-          ('frame_timestamp', float(metadata['timestamp'])),
-          ('frame_index', metadata['index']), # world view frame index used for annotation
-          ('frame', (img_buffer, is_keyframe, pts)),
-        ]
-
+        frame_buffer = data[2]
+        output['eye-video-world'] = {
+          'frame_timestamp': float(metadata['timestamp']),
+          'frame_index': frame_index, # world view frame index used for annotation
+          'frame_sequence_id': metadata['index'],
+          'frame': (frame_buffer, is_keyframe, frame_index),
+        }
       # Process eye video data
       elif topic in ['frame.eye.0', 'frame.eye.1']:
         # Prepare the metadata for the frame.
         eye_id = int(topic.split('.')[2])
-        metadata = msgpack.loads(data[1])
+        metadata: dict[str, Any] = msgpack.loads(data[1]) # type: ignore
         if self._start_index_eye[eye_id] is None: 
           self._start_index_eye[eye_id] = metadata['index']
           is_keyframe = True
         else:
           is_keyframe = (metadata['index'] - self._previous_index_eye[eye_id]) > 1 # NOTE: not safe against overflow, but uint64
         self._previous_index_eye[eye_id] = metadata['index']
-        pts = metadata['index'] - self._start_index_eye[eye_id]
+        frame_index = metadata['index'] - self._start_index_eye[eye_id]
         # Decode the frame.
-        img_buffer = data[2]
+        frame_buffer = data[2]
         # Prepare the output for the file writer.
-        video_eye_items = [
-          ('frame_timestamp', float(metadata['timestamp'])),
-          ('frame_index', metadata['index']), # world view frame index used for annotation
-          ('frame', (img_buffer, is_keyframe, pts))
-        ]
-
-    # Create a data dictionary.
-    # The keys should correspond to device names after the 'eye-tracking-' prefix.
-    data = OrderedDict([
-      ('eye-gaze',  OrderedDict(gaze_items) if gaze_items  is not None else None),
-      ('eye-pupil', OrderedDict(pupil_items) if pupil_items is not None else None),
-      ('eye-fixations', OrderedDict(fixation_items) if fixation_items is not None else None),
-      ('eye-blinks', OrderedDict(blinks_items) if blinks_items is not None else None),
-      ('eye-video-world', OrderedDict(video_world_items) if video_world_items is not None else None),
-      ('eye-video-eye0', OrderedDict(video_eye_items) if video_eye_items is not None and not eye_id else None),
-      ('eye-video-eye1', OrderedDict(video_eye_items) if video_eye_items is not None and eye_id else None),
-      ('eye-time', OrderedDict(time_items) if time_items is not None else None),
-    ])
-
-    return time_s, data
+        output['eye-video-eye%d'%eye_id] = {
+          'frame_timestamp': float(metadata['timestamp']),
+          'frame_index': frame_index,
+          'frame_sequence_id': metadata['index'],
+          'frame': (frame_buffer, is_keyframe, frame_index)
+        }
+      return time_s, output
+    except queue.Empty:
+      if self._is_more:
+        print('Timeout waiting on new packets from Pupil Core, maybe streamed paused by user.', flush=True)
+      else:
+        print('No more packets will come from Pupil Core.', flush=True)
+      return None
 
 
   # Alternate between capturing data so stream can be temporarily paused.
@@ -260,16 +255,19 @@ class PupilFacade:
 
   # Close sockets used by the Facade, destroy the ZeroMQ context in the SensorStreamer
   def close(self) -> None:
+    for t in self._topics: self._receiver.unsubscribe(t)
+    self._is_more = False
+    self._receive_thread.join()
     self._zmq_requester.close()
     self._receiver.close()
 
 
   # A helper to clear the Pupil socket receive buffer.
-  def _flush_device_input_buffer(self) -> None:
+  def _flush_buffer(self, socket: zmq.SyncSocket) -> None:
     flush_completed = False
     while not flush_completed:
       try:
-        self._zmq_requester.recv(flags=zmq.NOBLOCK)
+        socket.recv(flags=zmq.NOBLOCK)
       except:
         flush_completed = True
 
@@ -278,19 +276,16 @@ class PupilFacade:
   # Payload can be a dict or a simple string.
   # Strings will be sent as-is, while a dict will be sent after a topic message.
   # Returns the response message received.
-  def _send_to_ipc(self, payload: dict | str, topic: str = None) -> str:
+  def _send_to_ipc(self, payload: dict | str, topic: str | None = None) -> str:
     # Try to receive any outstanding messages, since sending
     #  will fail if there are any waiting.
-    self._flush_device_input_buffer()
+    self._flush_buffer(socket=self._zmq_requester)
     # Send the desired data as a dict or string.
     if isinstance(payload, dict):
-      # Send the topic, using a default if needed.
-      if topic is None:
-        topic = 'notify.%s' % payload['subject']
       # Pack and send the payload.
-      payload = msgpack.dumps(payload)
-      self._zmq_requester.send_string(topic, flags=zmq.SNDMORE)
-      self._zmq_requester.send(payload)
+      encoded_payload = msgpack.dumps(payload)
+      self._zmq_requester.send_string(topic if topic is not None else 'notify.%s' % payload['subject'], flags=zmq.SNDMORE)
+      self._zmq_requester.send(encoded_payload)
     else:
       # Send the topic if there is one.
       if topic is not None:
@@ -358,6 +353,7 @@ class PupilFacade:
     #                 (np.mean(clock_offsets_s)*1000.0, np.std(clock_offsets_s)*1000.0,
     #                  np.min(clock_offsets_s)*1000.0, np.max(clock_offsets_s)*1000.0))
     # TODO: remove outliers before averaging
-    return np.mean(clock_offsets_s)
+    res = np.mean(clock_offsets_s)
+    return float(res)
 
   # TODO: periodically sync the glasses time?

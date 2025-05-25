@@ -37,14 +37,14 @@ print_debug   : True
 
 host_ip : "192.168.0.100"
 is_master_broker: True
+
+remote_subscriber_ips: []
 remote_publisher_ips: # IPs of Brokers to listen to for data on some of desired topics
   - "192.168.0.103"
   - "192.168.0.104"
 
 is_remote_kill: False
 remote_kill_ip: "192.168.0.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
-
-remote_subscriber_ips: []
 
 
 logging_spec:
@@ -92,7 +92,8 @@ producer_specs:
     master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
     num_joints        : 5
     sampling_rate_hz  : 60 # [1, 4, 10, 12, 15, 20, 30, 60]
-    is_get_orientation: False
+    payload_mode      : "RateQuantitieswMag"
+    filter_profile    : "General"
     is_sync_devices   : True
   
   # Stream from the Pupil Labs eye tracker, including gaze and video data.
@@ -211,7 +212,8 @@ consumer_specs: # DataVisualizer and DataLogger are mutually exclusive, select o
         master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
         num_joints        : 5
         sampling_rate_hz  : 60
-        is_get_orientation: False
+        payload_mode      : "RateQuantitieswMag"
+        filter_profile    : "General"
         is_sync_devices   : True
       
       - class: "EyeStreamer"

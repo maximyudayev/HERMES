@@ -24,10 +24,7 @@
 #
 ############
 
-try:
-  import pyperclip
-except ModuleNotFoundError:
-  pass
+import pyperclip
 
 
 # A helper to insert new entries into the end of an array,

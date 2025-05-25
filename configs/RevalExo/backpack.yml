@@ -37,8 +37,8 @@ print_debug   : True
 host_ip : "127.0.0.1"
 is_master_broker: True
 
-remote_publisher_ips: []
 remote_subscriber_ips: []
+remote_publisher_ips: []
 
 is_remote_kill: False
 remote_kill_ip: null

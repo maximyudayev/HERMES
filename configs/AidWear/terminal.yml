@@ -38,9 +38,9 @@ print_debug   : True
 host_ip : "192.168.0.100"
 is_master_broker: True
 
+remote_subscriber_ips: []
 remote_publisher_ips: # IPs of Brokers to listen to for data on some of desired topics
   - "192.168.0.103"
-remote_subscriber_ips: []
 
 is_remote_kill: False
 remote_kill_ip: null
@@ -59,7 +59,7 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_config_filepath : "resources/codecs/h264_qsv.yml"
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
