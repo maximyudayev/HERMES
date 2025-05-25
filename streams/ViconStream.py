@@ -56,27 +56,28 @@ class ViconStream(Stream):
     self.add_stream(device_name='vicon-data',
                     stream_name='emg',
                     data_type='float32',
-                    sample_size=(self._num_devices),
+                    sample_size=(self._num_devices,),
                     sampling_rate_hz=sampling_rate_hz,
                     is_measure_rate_hz=True)
     self.add_stream(device_name='vicon-data',
                     stream_name='counter',
                     data_type='float32',
-                    sample_size=(1),
+                    sample_size=(1,),
                     sampling_rate_hz=sampling_rate_hz)
     self.add_stream(device_name='vicon-data',
                     stream_name='latency',
                     data_type='float32',
-                    sample_size=(1),
+                    sample_size=(1,),
                     sampling_rate_hz=sampling_rate_hz)
 
 
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {'vicon-data': super()._get_fps('vicon-data', 'emg')}
 
 
   def build_visulizer(self) -> dbc.Row:
     emg_plot = LinePlotVisualizer(stream=self,
+                                  unique_id='vicon-emg',
                                   data_path={'vicon-data': ['emg']},
                                   legend_names=list(self._device_mapping.keys()),
                                   plot_duration_timesteps=self._timesteps_before_solidified,
@@ -93,9 +94,9 @@ class ViconStream(Stream):
       ('Description', 'Analog EMG measurements captured using the DAC of the Vicon system.'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.keys())),
     ])
-    self._data_notes['vicon-data']['latency'] = OrderedDict([
-      ('Description', ''),
-    ])
     self._data_notes['vicon-data']['counter'] = OrderedDict([
-      ('Description', ''),
+      ('Description', 'Block frame number for a burst of EMG measurements, sent in 10ms bursts.'),
+    ])
+    self._data_notes['vicon-data']['latency'] = OrderedDict([
+      ('Description', 'Transmission delay estimate from Vicon w.r.t. the on-sensor acquisition time.'),
     ])

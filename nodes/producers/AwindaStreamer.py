@@ -28,11 +28,11 @@
 from nodes.producers.Producer import Producer
 from streams import AwindaStream
 
-from handlers.XsensHandler import XsensFacade
+from handlers.XsensAwinda.XsensHandler import XsensFacade
 from utils.zmq_utils import *
 
 import numpy as np
-import time
+from utils.time_utils import get_time
 from collections import OrderedDict
 
 
@@ -53,39 +53,36 @@ class AwindaStreamer(Producer):
                device_mapping: dict[str, str],
                sampling_rate_hz: int = 100,
                num_joints: int = 7,
-               radio_channel: int = 15,
+               radio_channel: int = 11, # [11, 15, 20 or 25]
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               transmit_delay_sample_period_s: float = None,
-               print_status: bool = True, 
-               print_debug: bool = False,
+               transmit_delay_sample_period_s: float = float('nan'),
                **_):
 
     self._num_joints = num_joints
-    self._sampling_rate_hz = sampling_rate_hz
     self._radio_channel = radio_channel
     self._device_mapping = device_mapping
     self._row_id_mapping = OrderedDict([(device_id, row_id) for row_id, device_id in enumerate(self._device_mapping.values())])
 
     stream_info = {
       "num_joints": self._num_joints,
-      "sampling_rate_hz": self._sampling_rate_hz,
+      "sampling_rate_hz": sampling_rate_hz,
       "device_mapping": self._device_mapping
     }
 
     super().__init__(host_ip=host_ip,
                      stream_info=stream_info,
                      logging_spec=logging_spec,
+                     sampling_rate_hz=sampling_rate_hz,
                      port_pub=port_pub,
                      port_sync=port_sync,
                      port_killsig=port_killsig,
-                     transmit_delay_sample_period_s=transmit_delay_sample_period_s,
-                     print_status=print_status, 
-                     print_debug=print_debug)
+                     transmit_delay_sample_period_s=transmit_delay_sample_period_s)
 
 
-  def create_stream(self, stream_info: dict) -> AwindaStream:  
+  @classmethod
+  def create_stream(cls, stream_info: dict) -> AwindaStream:  
     return AwindaStream(**stream_info)
 
 
@@ -96,27 +93,31 @@ class AwindaStreamer(Producer):
   def _connect(self) -> bool:
     self._handler = XsensFacade(device_mapping=self._device_mapping,
                                 radio_channel=self._radio_channel,
-                                sampling_rate_hz=self._sampling_rate_hz)
+                                sampling_rate_hz=int(self._sampling_rate_hz))
     # Keep reconnecting until success
-    while not self._handler.initialize(): 
+    while not self._handler.initialize():
       self._handler.cleanup()
     return True
 
 
+  def _keep_samples(self) -> None:
+    self._handler.keep_data()
+
+
   def _process_data(self) -> None:
-    process_time_s = time.time()
     snapshot = self._handler.get_snapshot()
-    if snapshot:
+    if snapshot is not None:
+      process_time_s = get_time()
       acceleration = np.empty((self._num_joints, 3), dtype=np.float32)
       acceleration.fill(np.nan)
       gyroscope = np.empty((self._num_joints, 3), dtype=np.float32)
       gyroscope.fill(np.nan)
       magnetometer = np.empty((self._num_joints, 3), dtype=np.float32)
       magnetometer.fill(np.nan)
-      orientation = np.empty((self._num_joints, 4), dtype=np.float32)
-      orientation.fill(np.nan)      
+      quaternion = np.empty((self._num_joints, 4), dtype=np.float32)
+      quaternion.fill(np.nan)      
       timestamp = np.zeros((self._num_joints), dtype=np.uint32)
-      toa_s = np.empty((self._num_joints), dtype=np.float32)
+      toa_s = np.empty((self._num_joints), dtype=np.float64)
       toa_s.fill(np.nan)
       counter = np.zeros((self._num_joints), dtype=np.uint32)
       counter_onboard = np.zeros((self._num_joints), dtype=np.uint16)
@@ -127,23 +128,17 @@ class AwindaStreamer(Producer):
           acceleration[id] = packet["acc"]
           gyroscope[id] = packet["gyr"]
           magnetometer[id] = packet["mag"]
-          orientation[id] = packet["quaternion"]
-          timestamp[id] = packet["timestamp_fine"]
+          quaternion[id] = packet["quaternion"]
+          timestamp[id] = packet["timestamp"]
           toa_s[id] = packet["toa_s"]
           counter[id] = packet["counter"]
           counter_onboard[id] = packet["counter_onboard"]
 
       data = {
-        'acceleration-x': acceleration[:,0],
-        'acceleration-y': acceleration[:,1],
-        'acceleration-z': acceleration[:,2],
-        'gyroscope-x': gyroscope[:,0],
-        'gyroscope-y': gyroscope[:,1],
-        'gyroscope-z': gyroscope[:,2],
-        'magnetometer-x': magnetometer[:,0],
-        'magnetometer-y': magnetometer[:,1],
-        'magnetometer-z': magnetometer[:,2],
-        'orientation': orientation,
+        'acceleration': acceleration,
+        'gyroscope': gyroscope,
+        'magnetometer': magnetometer,
+        'quaternion': quaternion,
         'timestamp': timestamp,
         'toa_s': toa_s,
         'counter': counter,
@@ -151,7 +146,7 @@ class AwindaStreamer(Producer):
       }
 
       tag: str = "%s.data" % self._log_source_tag()
-      self._publish(tag, time_s=process_time_s, data={'awinda-imu': data})
+      self._publish(tag, process_time_s=process_time_s, data={'awinda-imu': data})
     elif not self._is_continue_capture:
       # If triggered to stop and no more available data, send empty 'END' packet and join.
       self._send_end_packet()
@@ -162,4 +157,5 @@ class AwindaStreamer(Producer):
 
 
   def _cleanup(self) -> None:
+    self._handler.close()
     super()._cleanup()

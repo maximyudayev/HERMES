@@ -57,18 +57,18 @@ def rename_dict_key(d: dict | OrderedDict,
 #   Otherwise, will simply stringify the whole nested dictionary.
 def convert_dict_values_to_str(d: dict | OrderedDict, 
                                preserve_nested_dicts: bool = True) -> dict | OrderedDict:
-  # Create a new dictionary that will be populated
+  # Create a new dictionary that will be populated.
   if isinstance(d, OrderedDict):
     d_converted = OrderedDict()
   else:
     d_converted = {}
   
   for (key, value) in d.items():
-    # Recurse if the value is a dictionary
+    # Recurse if the value is a dictionary.
     if isinstance(value, dict) and preserve_nested_dicts:
       d_converted[key] = convert_dict_values_to_str(value, preserve_nested_dicts=preserve_nested_dicts)
     else:
-      # Add the item to the new dictionary if its value is convertible to a string
+      # Add the item to the new dictionary if its value is convertible to a string.
       try:
         d_converted[key] = str(value)
       except:
@@ -89,7 +89,7 @@ def flatten_dict(d: dict | OrderedDict) -> dict | OrderedDict:
 
 # Worker method for the above, which will return a list of items for the flattened dictionary.
 def _get_flattened_dict_items(d: dict | OrderedDict, 
-                              parent_key: str = None, 
+                              parent_key: str | None = None, 
                               parent_key_joiner: str = '|') -> list:
   d_items = []
   for (key, value) in d.items():

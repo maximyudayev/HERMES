@@ -26,14 +26,17 @@
 # ############
 
 # ZeroMQ topics and message strings
-TOPIC_KILL  = 'KILL'
-CMD_HELLO   = 'HELLO'
-CMD_GO      = 'GO'
-CMD_END     = 'END'
-CMD_BYE     = 'BYE'
-MSG_ON      = 'ON'
-MSG_OFF     = 'OFF'
-MSG_OK      = 'OK'
+TOPIC_KILL      = 'KILL'
+CMD_HELLO       = 'HELLO'
+CMD_ACK         = 'ACK'
+CMD_START_TIME  = 'START_TIME'
+CMD_GO          = 'GO'
+CMD_END         = 'END'
+CMD_EXIT        = 'EXIT?'
+CMD_BYE         = 'BYE'
+MSG_ON          = 'ON'
+MSG_OFF         = 'OFF'
+MSG_OK          = 'OK'
 
 # Ports used for ZeroMQ by our system
 PORT_BACKEND        = '42069'
@@ -50,6 +53,7 @@ PORT_PROSTHESIS   = '51702' # defined by LabView code of VUB
 PORT_GUI          = '8005'
 PORT_EYE          = '50020'
 PORT_VICON        = '801' # defined by Vicon software
+PORT_MVN          = '9763' # defined by MVN Analyze
 
 # IP addresses of devices on the network used by our system
 DNS_LOCALHOST   = 'localhost'

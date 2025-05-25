@@ -47,7 +47,7 @@ def decode_ndarray(obj):
 # Serializes the message objects.
 #   Preserves named arguments as key-value pairs for a dictionary-like message.
 def serialize(**kwargs) -> bytes:
-  return msgpack.packb(o=kwargs, default=encode_ndarray)
+  return msgpack.packb(o=kwargs, default=encode_ndarray) # type: ignore
 
 
 # Deserializes the message back into a dictionary-like message.

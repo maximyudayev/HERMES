@@ -37,7 +37,7 @@ import dash_bootstrap_components as dbc
 class TmsiStream(Stream):
   def __init__(self, 
                sampling_rate_hz: int = 20,
-               transmission_delay_period_s: int = None,
+               transmission_delay_period_s: int | None = None,
                **_) -> None:
     super().__init__()
     self._sampling_rate_hz = sampling_rate_hz
@@ -70,7 +70,7 @@ class TmsiStream(Stream):
                     sampling_rate_hz=self._sampling_rate_hz)
     self.add_stream(device_name='tmsi-data',
                     stream_name='counter',
-                    data_type='float32', # TODO: specify the right data format
+                    data_type='int32',
                     sample_size=[1],
                     sampling_rate_hz=self._sampling_rate_hz,
                     is_measure_rate_hz=True)
@@ -79,11 +79,11 @@ class TmsiStream(Stream):
       self.add_stream(device_name='tmsi-connection',
                       stream_name='transmission_delay',
                       data_type='float32',
-                      sample_size=(1),
+                      sample_size=(1,),
                       sampling_rate_hz=1.0/self._transmission_delay_period_s)
 
 
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {'tmsi-data': super()._get_fps('tmsi-data', 'counter')}
 
 

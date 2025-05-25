@@ -31,7 +31,6 @@ from streams import InsoleStream
 from utils.print_utils import *
 from utils.zmq_utils import *
 import socket
-import time
 
 
 ##################################################
@@ -48,13 +47,11 @@ class InsoleStreamer(Producer):
   def __init__(self,
                host_ip: str,
                logging_spec: dict,
-               sampling_rate_hz: int = 100,
+               sampling_rate_hz: float = 100,
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               transmit_delay_sample_period_s: float = None,
-               print_status: bool = True, 
-               print_debug: bool = False,
+               transmit_delay_sample_period_s: float = float('nan'),
                **_):
     
     stream_info = {
@@ -64,14 +61,14 @@ class InsoleStreamer(Producer):
     super().__init__(host_ip=host_ip,
                      stream_info=stream_info,
                      logging_spec=logging_spec,
+                     sampling_rate_hz=sampling_rate_hz,
                      port_pub=port_pub,
                      port_sync=port_sync,
                      port_killsig=port_killsig,
-                     transmit_delay_sample_period_s=transmit_delay_sample_period_s,
-                     print_status=print_status,
-                     print_debug=print_debug)
+                     transmit_delay_sample_period_s=transmit_delay_sample_period_s)
 
 
+  @classmethod
   def create_stream(cls, stream_info: dict) -> InsoleStream:
     return InsoleStream(**stream_info)
 
@@ -81,25 +78,30 @@ class InsoleStreamer(Producer):
 
 
   def _connect(self) -> bool:
-    try:
-      self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-      self._sock.settimeout(0.5)
-      self._sock.bind((IP_LOOPBACK, PORT_MOTICON))
-      self._sock.recv(1024)
-      self._sock.settimeout(None)
-      return True
-    except socket.timeout:
-      return False
+    self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    self._sock.settimeout(10)
+    return True
+
+
+  def _keep_samples(self) -> None:
+    # Bind the socket after nodes synced, ensures no buffering on the socket happens. 
+    self._sock.bind((IP_LOOPBACK, int(PORT_MOTICON)))
 
 
   def _process_data(self) -> None:
     if self._is_continue_capture:
-      payload, address = self._sock.recvfrom(1024) # data is whitespace-separated byte string
-      time_s: float = time.time()
+      try:
+        payload, address = self._sock.recvfrom(1024) # data is whitespace-separated byte string
+      except socket.timeout:
+        print('Moticon insoles receive socket timed out on receive.', flush=True)
+        return
+
+      process_time_s: float = get_time()
       payload = [float(word) for word in payload.split()] # splits byte string into array of (multiple) bytes, removing whitespace separators between measurements
 
       data = {
         'timestamp': payload[0],
+        'toa_s': process_time_s,
         'foot_pressure_left': payload[9:25],
         'foot_pressure_right': payload[34:50],
         'acc_left': payload[1:4],
@@ -113,7 +115,7 @@ class InsoleStreamer(Producer):
       }
 
       tag: str = "%s.data" % self._log_source_tag()
-      self._publish(tag, time_s=time_s, data={'insoles-data': data})
+      self._publish(tag, process_time_s=process_time_s, data={'insoles-data': data})
     else:
       self._send_end_packet()
 

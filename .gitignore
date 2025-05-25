@@ -10,5 +10,3 @@ data/
 
 # VS Code
 ###################################
-/.vscode/*
-!/.vscode/launch.json

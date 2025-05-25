@@ -26,10 +26,11 @@
 # ############
 
 from abc import abstractmethod
-import time
+from typing import Any, Callable
 
 import zmq
 import threading
+import math
 
 from handlers.LoggingHandler import Logger
 from handlers.TransmissionDelayHandler import DelayEstimator
@@ -51,20 +52,20 @@ class Producer(Node):
                host_ip: str,
                stream_info: dict,
                logging_spec: dict,
+               sampling_rate_hz: float = float('nan'),
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               transmit_delay_sample_period_s: float = None,
-               print_status: bool = True,
-               print_debug: bool = False) -> None:
-    super().__init__(host_ip=host_ip, 
-                     port_sync=port_sync, 
-                     port_killsig=port_killsig, 
-                     print_status=print_status, 
-                     print_debug=print_debug)
+               transmit_delay_sample_period_s: float = float('nan')) -> None:
+    super().__init__(host_ip=host_ip,
+                     port_sync=port_sync,
+                     port_killsig=port_killsig)
+    self._sampling_rate_hz = sampling_rate_hz
+    self._sampling_period = 1/sampling_rate_hz
     self._port_pub = port_pub
     self._is_continue_capture = True
     self._transmit_delay_sample_period_s = transmit_delay_sample_period_s
+    self._publish_fn = lambda tag, **kwargs: None
 
     # Data structure for keeping track of data
     self._stream: Stream = self.create_stream(stream_info)
@@ -77,7 +78,7 @@ class Producer(Node):
     self._logger_thread.start()
 
     # Conditional creation of the transmission delay estimate thread.
-    if self._transmit_delay_sample_period_s:
+    if not math.isnan(self._transmit_delay_sample_period_s):
       self._delay_estimator = DelayEstimator(self._transmit_delay_sample_period_s)
       self._delay_thread = threading.Thread(target=self._delay_estimator, 
                                             kwargs={
@@ -109,16 +110,9 @@ class Producer(Node):
 
   # Common method to save and publish the captured sample
   # NOTE: best to deal with data structure (threading primitives) AFTER handing off packet to ZeroMQ.
-  #   That way network threadcan alradystart processing the packet.
+  #   That way network thread can alrady start processing the packet.
   def _publish(self, tag: str, **kwargs) -> None:
-    # Get serialized object to send over ZeroMQ.
-    # msg = serialize(**kwargs)
-    # # Send the data packet on the PUB socket.
-    # self._pub.send_multipart([tag.encode('utf-8'), msg])
-    # Store the captured data into the data structure.
-    # time_start = time.time()
-    self._stream.append_data(**kwargs)
-    # print(time.time() - time_start, flush=True)
+    self._publish_fn(tag, **kwargs)
 
 
   # Initialize backend parameters specific to Producer.
@@ -146,6 +140,25 @@ class Producer(Node):
     if self._pub in poll_res[0]:
       self._process_data()
     super()._on_poll(poll_res)
+
+
+  def _on_sync_complete(self) -> None:
+    self._publish_fn = self._store_and_broadcast
+    self._keep_samples()
+
+
+  @abstractmethod
+  def _keep_samples(self) -> None:
+    pass
+
+
+  def _store_and_broadcast(self, tag: str, **kwargs) -> None:
+    # Get serialized object to send over ZeroMQ.
+    # msg = serialize(**kwargs)
+    # Send the data packet on the PUB socket.
+    # self._pub.send_multipart([tag.encode('utf-8'), msg])
+    # Store the captured data into the data structure.
+    self._stream.append_data(**kwargs)
 
 
   # Iteration loop logic for the sensor.
@@ -179,14 +192,18 @@ class Producer(Node):
   def _cleanup(self) -> None:
     # Indicate to Logger to wrap up and exit.
     self._logger.cleanup()
-    if self._transmit_delay_sample_period_s:
+    if not math.isnan(self._transmit_delay_sample_period_s):
       self._delay_estimator.cleanup()
     # Before closing the PUB socket, wait for the 'BYE' signal from the Broker.
-    # self._sync.send_string('') # no need to read contents of the message.
-    self._sync.recv() # no need to read contents of the message.
+    self._sync.send_multipart([self._log_source_tag().encode('utf-8'), CMD_EXIT.encode('utf-8')]) 
+    host, cmd = self._sync.recv_multipart() # no need to read contents of the message.
+    print("%s received %s from %s." % (self._log_source_tag(),
+                                       cmd.decode('utf-8'),
+                                       host.decode('utf-8')),
+                                       flush=True)
     self._pub.close()
     # Join on the logging background thread last, so that all things can finish in parallel.
     self._logger_thread.join()
-    if self._transmit_delay_sample_period_s:
+    if not math.isnan(self._transmit_delay_sample_period_s):
       self._delay_thread.join()
     super()._cleanup()

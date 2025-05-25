@@ -41,5 +41,5 @@ def estimate_transmission_delay(ping_fn: Callable,
     # Assume symmetric delays.
     transmit_delays_s.append((local_time_after - local_time_before)/2.0)
   # TODO: remove outliers before averaging.
-  transmit_delay_s = np.mean(transmit_delays_s)
-  return transmit_delay_s
+  delays = np.array(transmit_delays_s)
+  return float(np.mean(delays))

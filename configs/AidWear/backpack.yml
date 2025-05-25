@@ -36,13 +36,14 @@ print_debug   : True
 
 
 host_ip : "192.168.0.103"
+is_master_broker: False
+
+remote_subscriber_ips:
+  - "192.168.0.100"
 remote_publisher_ips: []
 
 is_remote_kill: True
 remote_kill_ip: "192.168.0.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
-
-remote_subscriber_ips: 
-  - "192.168.0.100"
 
 
 logging_spec:
@@ -58,28 +59,13 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec         : 'h264_qsv'
+  video_codec_config_filepath : "resources/codecs/h264_qsv.yml"
   video_codec_num_cpu : 1
-  video_pix_format    : 'nv12'
 
   audio_format        : "wav" # currently only supports WAV
 
 
 producer_specs:
-  # Stream from the Awinda body tracking and Manus gloves.
-  - class: "AwindaStreamer"
-    device_mapping:
-      pelvis          : "00B4D3E4"
-      upper_leg_right : "00B4D3D7"
-      lower_leg_right : "00B4D3E2"
-      foot_right      : "00B4D3DD"
-      upper_leg_left  : "00B4D3E7"
-      lower_leg_left  : "00B4D3D4"
-      foot_left       : "00B4D3D8"
-    num_joints        : 7
-    sampling_rate_hz  : 100
-    radio_channel     : 15
-  
   # Stream from the DOTs lower limb tracking.
   - class: "DotsStreamer"
     device_mapping: 
@@ -91,7 +77,8 @@ producer_specs:
     master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
     num_joints        : 5
     sampling_rate_hz  : 60
-    is_get_orientation: False
+    payload_mode      : "RateQuantitieswMag"
+    filter_profile    : "General"
     is_sync_devices   : True
   
   # Stream from the Pupil Labs eye tracker, including gaze and video data.
@@ -109,7 +96,7 @@ producer_specs:
       - 720
       - 1280
       - 3
-    shape_video_eye0: 
+    shape_video_eye0:
       - 192
       - 192
       - 3

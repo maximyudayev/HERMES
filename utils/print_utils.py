@@ -24,10 +24,7 @@
 #
 ############
 
-try:
-  import numpy as np
-except:
-  pass
+import numpy as np
 from utils.time_utils import *
 
 

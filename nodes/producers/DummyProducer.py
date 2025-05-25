@@ -46,9 +46,7 @@ class DummyProducer(Producer):
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               transmit_delay_sample_period_s: float = None,
-               print_status: bool = True, 
-               print_debug: bool = False,
+               transmit_delay_sample_period_s: float = float('nan'),
                **_):
     
     stream_info = {
@@ -58,14 +56,14 @@ class DummyProducer(Producer):
     super().__init__(host_ip=host_ip,
                      stream_info=stream_info,
                      logging_spec=logging_spec,
+                     sampling_rate_hz=sampling_rate_hz,
                      port_pub=port_pub,
                      port_sync=port_sync,
                      port_killsig=port_killsig,
-                     transmit_delay_sample_period_s=transmit_delay_sample_period_s,
-                     print_status=print_status,
-                     print_debug=print_debug)
+                     transmit_delay_sample_period_s=transmit_delay_sample_period_s)
 
 
+  @classmethod
   def create_stream(cls, stream_info: dict) -> DummyStream:
     return DummyStream(**stream_info)
 
@@ -78,13 +76,17 @@ class DummyProducer(Producer):
     return True
 
 
+  def _keep_samples(self) -> None:
+    pass
+
+
   def _process_data(self) -> None:
     if self._is_continue_capture:
       time.sleep(1.0)
-      time_s: float = time.time()
-      print(time_s, flush=True)
+      process_time_s: float = get_time()
+      print(process_time_s, flush=True)
       tag: str = "%s.data" % self._log_source_tag()
-      self._publish(tag, time_s=time_s, data={'sensor-emulator': {'toa': time_s}})
+      self._publish(tag, process_time_s=process_time_s, data={'sensor-emulator': {'toa': process_time_s}})
     else:
       self._send_end_packet()
 

@@ -49,7 +49,7 @@ class DummyStream(Stream):
                     is_measure_rate_hz=True)
 
 
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {self._device_name: super()._get_fps(self._device_name, 'toa')}
 
 

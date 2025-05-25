@@ -30,8 +30,8 @@ from streams import CyberlegStream
 
 from utils.print_utils import *
 from utils.zmq_utils import *
+from utils.time_utils import get_time
 import socket
-import time
 import struct
 
 
@@ -54,27 +54,27 @@ class CyberlegStreamer(Producer):
   def __init__(self,
                host_ip: str,
                logging_spec: dict,
+               sampling_rate_hz: int = 10,
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               print_status: bool = True, 
-               print_debug: bool = False,
                **_):
 
     self._num_packet_bytes = 3
     stream_info = {
+      "sampling_rate_hz": sampling_rate_hz
     }
 
     super().__init__(host_ip=host_ip,
                      stream_info=stream_info,
                      logging_spec=logging_spec,
+                     sampling_rate_hz=sampling_rate_hz,
                      port_pub=port_pub,
                      port_sync=port_sync,
-                     port_killsig=port_killsig,
-                     print_status=print_status,
-                     print_debug=print_debug)
+                     port_killsig=port_killsig)
 
 
+  @classmethod
   def create_stream(cls, stream_info: dict) -> CyberlegStream:
     return CyberlegStream(**stream_info)
 
@@ -86,17 +86,29 @@ class CyberlegStreamer(Producer):
   def _connect(self) -> bool:
     try:
       self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      self._sock.connect((IP_PROSTHESIS, PORT_PROSTHESIS))
+      self._sock.settimeout(10)
+      self._sock.connect((IP_PROSTHESIS, int(PORT_PROSTHESIS)))
       self._sock.recv(self._num_packet_bytes)
       return True
     except socket.timeout:
+      print('CyberLeg TCP socket timed out on connect/receive. Make sure the CyberLeg is ON and on the LAN.', flush=True)
       return False
+
+
+  def _keep_samples(self) -> None:
+    # TODO: flush socket buffer.
+    pass
 
 
   def _process_data(self) -> None:
     if self._is_continue_capture:
-      payload = self._sock.recv(self._num_packet_bytes) 
-      time_s: float = time.time()
+      try:
+        payload = self._sock.recv(self._num_packet_bytes) 
+      except socket.timeout:
+        print('CyberLeg UDP socket timed out on receive.', flush=True)
+        return
+
+      process_time_s: float = get_time()
       # Interpret smartphone bytes correctly from the prosthesis.
       msg = struct.unpack('ccc', payload) # TODO: unpack the packet.
       data = {
@@ -106,7 +118,7 @@ class CyberlegStreamer(Producer):
         # 'timestamp':    msg[3],
       }
       tag: str = "%s.data" % self._log_source_tag()
-      self._publish(tag, time_s=time_s, data={'cyberleg-data': data})
+      self._publish(tag, process_time_s=process_time_s, data={'cyberleg-data': data})
     else:
       self._send_end_packet()
 

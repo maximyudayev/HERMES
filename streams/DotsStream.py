@@ -26,6 +26,8 @@
 # ############
 
 from collections import OrderedDict
+from handlers.MovellaDots.MovellaHandler import MOVELLA_PAYLOAD_MODE
+from handlers.MovellaDots.MovellaConstants import MOVELLA_STATUS_MASK
 from streams import Stream
 from visualizers import LinePlotVisualizer#, SkeletonVisualizer
 from streams.Stream import Stream
@@ -42,15 +44,15 @@ class DotsStream(Stream):
                device_mapping: dict[str,str],
                num_joints: int = 5,
                sampling_rate_hz: int = 60,
-               is_get_orientation: bool = True,
+               payload_mode: str = 'RateQuantitieswMag',
                timesteps_before_solidified: int = 0,
                update_interval_ms: int = 100,
-               transmission_delay_period_s: int = None,
+               transmission_delay_period_s: int | None = None,
                **_) -> None:
     super().__init__()
     self._num_joints = num_joints
     self._sampling_rate_hz = sampling_rate_hz
-    self._is_get_orientation = is_get_orientation
+    self._data_getters = MOVELLA_PAYLOAD_MODE[payload_mode]['methods']
     self._transmission_delay_period_s = transmission_delay_period_s
     self._timesteps_before_solidified = timesteps_before_solidified
     self._update_interval_ms = update_interval_ms
@@ -61,141 +63,71 @@ class DotsStream(Stream):
 
     self._define_data_notes()
 
-    self.add_stream(device_name='dots-imu',
-                    stream_name='acceleration-x',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['acceleration-x'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='dots-imu',
-                    stream_name='acceleration-y',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['acceleration-y'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='dots-imu',
-                    stream_name='acceleration-z',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['acceleration-z'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='dots-imu',
-                    stream_name='gyroscope-x',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['gyroscope-x'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='dots-imu',
-                    stream_name='gyroscope-y',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['gyroscope-y'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='dots-imu',
-                    stream_name='gyroscope-z',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['gyroscope-z'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='dots-imu',
-                    stream_name='magnetometer-x',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['magnetometer-x'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='dots-imu',
-                    stream_name='magnetometer-y',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['magnetometer-y'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='dots-imu',
-                    stream_name='magnetometer-z',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['magnetometer-z'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    if self._is_get_orientation:
+    for data_name, data_getter in self._data_getters.items():
       self.add_stream(device_name='dots-imu',
-                      stream_name='orientation',
-                      data_type='float32',
-                      sample_size=(self._num_joints, 4),
-                      sampling_rate_hz=self._sampling_rate_hz, 
-                      data_notes=self._data_notes['dots-imu']['orientation'])
+                      stream_name=data_name,
+                      data_type=data_getter['type_str'],
+                      sample_size=(self._num_joints, *data_getter['n_dim']),
+                      sampling_rate_hz=self._sampling_rate_hz,
+                      data_notes=self._data_notes['dots-imu'][data_name],
+                      timesteps_before_solidified=self._timesteps_before_solidified)
+
     self.add_stream(device_name='dots-imu',
                     stream_name='timestamp',
                     data_type='uint32',
-                    sample_size=(self._num_joints),
+                    sample_size=(self._num_joints,),
                     sampling_rate_hz=self._sampling_rate_hz,
-                    is_measure_rate_hz=True,
                     data_notes=self._data_notes['dots-imu']['timestamp'])
     self.add_stream(device_name='dots-imu',
                     stream_name='toa_s',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
+                    data_type='float64',
+                    sample_size=(self._num_joints,),
                     sampling_rate_hz=self._sampling_rate_hz,
                     data_notes=self._data_notes['dots-imu']['toa_s'])
     self.add_stream(device_name='dots-imu',
                     stream_name='counter',
                     data_type='uint32',
-                    sample_size=(self._num_joints),
+                    sample_size=(self._num_joints,),
                     sampling_rate_hz=self._sampling_rate_hz,
+                    is_measure_rate_hz=True,
                     data_notes=self._data_notes['dots-imu']['counter'])
 
     if self._transmission_delay_period_s:
       self.add_stream(device_name='dots-connection',
                       stream_name='transmission_delay',
                       data_type='float32',
-                      sample_size=(1),
+                      sample_size=(1,),
                       sampling_rate_hz=1.0/self._transmission_delay_period_s,
                       data_notes=self._data_notes['dots-connection']['transmission_delay'])
 
 
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {'dots-imu': super()._get_fps('dots-imu', 'timestamp')}
 
 
-  # TODO: add `SkeletonVisualizer` for orientation data.
   def build_visulizer(self) -> dbc.Row:
     acceleration_plot = LinePlotVisualizer(stream=self,
                                            unique_id='dots_acc',
-                                           data_path={'dots-imu': [
-                                                        'acceleration-x',
-                                                        'acceleration-y',
-                                                        'acceleration-z']},
+                                           data_path={'dots-imu': ['acceleration']},
                                            legend_names=list(self._device_mapping.values()),
                                            plot_duration_timesteps=self._timesteps_before_solidified,
                                            update_interval_ms=self._update_interval_ms,
                                            col_width=6)
     gyroscope_plot = LinePlotVisualizer(stream=self,
                                         unique_id='dots_gyr',
-                                        data_path={'dots-imu': [
-                                                      'gyroscope-x',
-                                                      'gyroscope-y',
-                                                      'gyroscope-z']},
+                                        data_path={'dots-imu': ['gyroscope']},
                                         legend_names=list(self._device_mapping.values()),
                                         plot_duration_timesteps=self._timesteps_before_solidified,
                                         update_interval_ms=self._update_interval_ms,
                                         col_width=6)
     magnetometer_plot = LinePlotVisualizer(stream=self,
                                            unique_id='dots_mag',
-                                           data_path={'dots-imu': [
-                                                        'magnetometer-x',
-                                                        'magnetometer-y',
-                                                        'magnetometer-z']},
+                                           data_path={'dots-imu': ['magnetometer']},
                                            legend_names=list(self._device_mapping.values()),
                                            plot_duration_timesteps=self._timesteps_before_solidified,
                                            update_interval_ms=self._update_interval_ms,
                                            col_width=6)
+    # TODO: add `SkeletonVisualizer` for orientation data.
     # skeleton_plot = SkeletonVisualizer()
     return dbc.Row([acceleration_plot.layout, gyroscope_plot.layout, magnetometer_plot.layout])
 
@@ -205,59 +137,46 @@ class DotsStream(Stream):
     self._data_notes.setdefault('dots-imu', {})
     self._data_notes.setdefault('dots-connection', {})
 
-    self._data_notes['dots-imu']['acceleration-x'] = OrderedDict([
-      ('Description', 'Linear acceleration in the X direction w.r.t. sensor local coordinate system'),
+    self._data_notes['dots-imu']['acceleration'] = OrderedDict([
+      ('Description', 'Linear acceleration in the [X,Y,Z] direction w.r.t. sensor local coordinate system'),
       ('Units', 'meter/second^2'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    self._data_notes['dots-imu']['acceleration-y'] = OrderedDict([
-      ('Description', 'Linear acceleration in the Y direction w.r.t. sensor local coordinate system'),
-      ('Units', 'meter/second^2'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['dots-imu']['acceleration-z'] = OrderedDict([
-      ('Description', 'Linear acceleration in the Z direction w.r.t. sensor local coordinate system'),
-      ('Units', 'meter/second^2'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['dots-imu']['gyroscope-x'] = OrderedDict([
-      ('Description', 'Angular velocity in the X direction w.r.t. sensor local coordinate system'),
+    self._data_notes['dots-imu']['gyroscope'] = OrderedDict([
+      ('Description', 'Angular velocity in the [X,Y,Z] direction w.r.t. sensor local coordinate system'),
       ('Units', 'degree/second'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    self._data_notes['dots-imu']['gyroscope-y'] = OrderedDict([
-      ('Description', 'Angular velocity in the Y direction w.r.t. sensor local coordinate system'),
-      ('Units', 'degree/second'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['dots-imu']['gyroscope-z'] = OrderedDict([
-      ('Description', 'Angular velocity in the Z direction w.r.t. sensor local coordinate system'),
-      ('Units', 'degree/second'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['dots-imu']['magnetometer-x'] = OrderedDict([
-      ('Description', 'Magnetometer reading in the X direction'),
+    self._data_notes['dots-imu']['magnetometer'] = OrderedDict([
+      ('Description', 'Magnetometer reading in the [X,Y,Z] direction'),
       ('Units', 'arbitrary unit normalized to earth field strength during factory calibration (~40uT), '
                 'w.r.t. sensor local coordinate system'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    self._data_notes['dots-imu']['magnetometer-y'] = OrderedDict([
-      ('Description', 'Magnetometer reading in the Y direction'),
-      ('Units', 'arbitrary unit normalized to earth field strength during factory calibration (~40uT), '
-                'w.r.t. sensor local coordinate system'),
+    self._data_notes['dots-imu']['quaternion'] = OrderedDict([
+      ('Description', 'Quaternion rotation vector [W,X,Y,Z]'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    self._data_notes['dots-imu']['magnetometer-z'] = OrderedDict([
-      ('Description', 'Magnetometer reading in the Z direction'),
-      ('Units', 'arbitrary unit normalized to earth field strength during factory calibration (~40uT), '
-                'w.r.t. sensor local coordinate system'),
+    self._data_notes['dots-imu']['euler'] = OrderedDict([
+      ('Description', 'Euler rotation vector [X,Y,Z], for roll, pitch, and yaw'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    if self._is_get_orientation:
-      self._data_notes['dots-imu']['orientation'] = OrderedDict([
-        ('Description', 'Quaternion rotation vector [W,X,Y,Z]'),
-        (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-      ])
+    self._data_notes['dots-imu']['free_acceleration'] = OrderedDict([
+      ('Description', 'Free linear acceleration in the [X,Y,Z] direction, with the Earth gravity component deducted, '
+                      'w.r.t. sensor local coordinate system'),
+      ('Units', 'meter/second^2'),
+      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
+    ])
+    self._data_notes['dots-imu']['dq'] = OrderedDict([
+      ('Description', 'Quaternion rotation increment vector [W,X,Y,Z] in the time window of sampling rate'),
+      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
+    ])
+    self._data_notes['dots-imu']['dv'] = OrderedDict([
+      ('Description', 'Angular velocity increment in the [X,Y,Z] direction in the time window of sampling rate,'
+                      'w.r.t. sensor local coordinate system'),
+      ('Units', 'degree'),
+      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
+    ])
     self._data_notes['dots-imu']['timestamp'] = OrderedDict([
       ('Description', 'Time of sampling of the packet w.r.t. sensor on-board 1MHz clock, '
                       'clearing on startup and overflowing every ~1.2 hours'),
@@ -267,6 +186,11 @@ class DotsStream(Stream):
     self._data_notes['dots-imu']['toa_s'] = OrderedDict([
       ('Description', 'Time of arrival of the packet w.r.t. system clock.'),
       ('Units', 'seconds'),
+      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
+    ])
+    self._data_notes['dots-imu']['status'] = OrderedDict([
+      ('Description', 'One-hot-encoded bit mask specifying out-of-range status of a measurement in the 9-DOF inertial data.'),
+      ('Options', MOVELLA_STATUS_MASK),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
     self._data_notes['dots-imu']['counter'] = OrderedDict([

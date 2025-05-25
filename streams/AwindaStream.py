@@ -46,7 +46,7 @@ class AwindaStream(Stream):
                sampling_rate_hz: int = 100,
                timesteps_before_solidified: int = 0,
                update_interval_ms: int = 100,
-               transmission_delay_period_s: int = None,
+               transmission_delay_period_s: int | None = None,
                **_) -> None:
     super().__init__()
     
@@ -67,138 +67,90 @@ class AwindaStream(Stream):
     #   with interpolation of data for steps where some of sensors missed a measurement.
     # Choose the desired behavior for the system later. (currently onAllLiveDataAvailable).
     self.add_stream(device_name='awinda-imu',
-                    stream_name='acceleration-x',
+                    stream_name='acceleration',
                     data_type='float32',
-                    sample_size=(self._num_joints),
+                    sample_size=(self._num_joints, 3),
                     sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['awinda-imu']['acceleration-x'],
+                    data_notes=self._data_notes['awinda-imu']['acceleration'],
                     timesteps_before_solidified=self._timesteps_before_solidified)
     self.add_stream(device_name='awinda-imu',
-                    stream_name='acceleration-y',
+                    stream_name='gyroscope',
                     data_type='float32',
-                    sample_size=(self._num_joints),
+                    sample_size=(self._num_joints, 3),
                     sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['awinda-imu']['acceleration-y'],
+                    data_notes=self._data_notes['awinda-imu']['gyroscope'],
                     timesteps_before_solidified=self._timesteps_before_solidified)
     self.add_stream(device_name='awinda-imu',
-                    stream_name='acceleration-z',
+                    stream_name='magnetometer',
                     data_type='float32',
-                    sample_size=(self._num_joints),
+                    sample_size=(self._num_joints, 3),
                     sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['awinda-imu']['acceleration-z'],
+                    data_notes=self._data_notes['awinda-imu']['magnetometer'],
                     timesteps_before_solidified=self._timesteps_before_solidified)
     self.add_stream(device_name='awinda-imu',
-                    stream_name='gyroscope-x',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['awinda-imu']['gyroscope-x'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='awinda-imu',
-                    stream_name='gyroscope-y',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['awinda-imu']['gyroscope-y'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='awinda-imu',
-                    stream_name='gyroscope-z',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['awinda-imu']['gyroscope-z'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='awinda-imu',
-                    stream_name='magnetometer-x',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['awinda-imu']['magnetometer-x'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='awinda-imu',
-                    stream_name='magnetometer-y',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['awinda-imu']['magnetometer-y'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='awinda-imu',
-                    stream_name='magnetometer-z',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
-                    sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['awinda-imu']['magnetometer-z'],
-                    timesteps_before_solidified=self._timesteps_before_solidified)
-    self.add_stream(device_name='awinda-imu',
-                    stream_name='orientation',
+                    stream_name='quaternion',
                     data_type='float32',
                     sample_size=(self._num_joints, 4),
                     sampling_rate_hz=self._sampling_rate_hz, 
-                    data_notes=self._data_notes['awinda-imu']['orientation'])
+                    data_notes=self._data_notes['awinda-imu']['quaternion'])
     self.add_stream(device_name='awinda-imu',
                     stream_name='timestamp',
                     data_type='uint32',
-                    sample_size=(self._num_joints),
+                    sample_size=(self._num_joints,),
                     sampling_rate_hz=self._sampling_rate_hz,
                     is_measure_rate_hz=True, # only 1 stream per device needs to be marked `True` if all streams get new data at a time
                     data_notes=self._data_notes['awinda-imu']['timestamp'])
-    self.add_stream(device_name='dots-imu',
+    self.add_stream(device_name='awinda-imu',
                     stream_name='toa_s',
-                    data_type='float32',
-                    sample_size=(self._num_joints),
+                    data_type='float64',
+                    sample_size=(self._num_joints,),
                     sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['toa_s'])
+                    data_notes=self._data_notes['awinda-imu']['toa_s'])
     self.add_stream(device_name='awinda-imu',
                     stream_name='counter_onboard',
                     data_type='uint16',
-                    sample_size=(self._num_joints),
+                    sample_size=(self._num_joints,),
                     sampling_rate_hz=self._sampling_rate_hz,
                     data_notes=self._data_notes['awinda-imu']['counter_onboard'])
-    self.add_stream(device_name='dots-imu',
+    self.add_stream(device_name='awinda-imu',
                     stream_name='counter',
                     data_type='uint32',
-                    sample_size=(self._num_joints),
+                    sample_size=(self._num_joints,),
                     sampling_rate_hz=self._sampling_rate_hz,
-                    data_notes=self._data_notes['dots-imu']['counter'])
+                    data_notes=self._data_notes['awinda-imu']['counter'])
 
     if self._transmission_delay_period_s:
       self.add_stream(device_name='awinda-connection',
                       stream_name='transmission_delay',
                       data_type='float32',
-                      sample_size=(1),
+                      sample_size=(1,),
                       sampling_rate_hz=1.0/self._transmission_delay_period_s,
                       data_notes=self._data_notes['awinda-connection']['transmission_delay'])
 
 
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {'awinda-imu': super()._get_fps('awinda-imu', 'timestamp')}
 
 
   # TODO: add `SkeletonVisualizer` for orientation data.
   def build_visulizer(self) -> dbc.Row:
-    acceleration_plot = LinePlotVisualizer(stream=self,
-                                           data_path={'awinda-imu': [
-                                                        'acceleration-x',
-                                                        'acceleration-y',
-                                                        'acceleration-z']},
+    acceleration_plot = LinePlotVisualizer(unique_id='awinda-acc',
+                                           stream=self,
+                                           data_path={'awinda-imu': ['acceleration']},
                                            legend_names=list(self._device_mapping.values()),
                                            plot_duration_timesteps=self._timesteps_before_solidified,
                                            update_interval_ms=self._update_interval_ms,
                                            col_width=6)
-    gyroscope_plot = LinePlotVisualizer(stream=self,
-                                        device_name={'awinda-imu': [
-                                                       'gyroscope-x',
-                                                       'gyroscope-y',
-                                                       'gyroscope-z']},
+    gyroscope_plot = LinePlotVisualizer(unique_id='awinda-gyr',
+                                        stream=self,
+                                        data_path={'awinda-imu': ['gyroscope']},
                                         legend_names=list(self._device_mapping.values()),
                                         plot_duration_timesteps=self._timesteps_before_solidified,
                                         update_interval_ms=self._update_interval_ms,
                                         col_width=6)
-    magnetometer_plot = LinePlotVisualizer(stream=self,
-                                           device_name={'awinda-imu': [
-                                                          'magnetometer-x',
-                                                          'magnetometer-y',
-                                                          'magnetometer-z']},
+    magnetometer_plot = LinePlotVisualizer(unique_id='awinda-mag',
+                                           stream=self,
+                                           data_path={'awinda-imu': ['magnetometer']},
                                            legend_names=list(self._device_mapping.values()),
                                            plot_duration_timesteps=self._timesteps_before_solidified,
                                            update_interval_ms=self._update_interval_ms,
@@ -212,64 +164,26 @@ class AwindaStream(Stream):
     self._data_notes.setdefault('awinda-imu', {})
     self._data_notes.setdefault('awinda-connection', {})
 
-    self._data_notes['awinda-imu']['acceleration-x'] = OrderedDict([
-      ('Description', 'Linear acceleration in the X direction w.r.t. sensor local coordinate system, '
+    self._data_notes['awinda-imu']['acceleration'] = OrderedDict([
+      ('Description', 'Linear acceleration vector [X,Y,Z] w.r.t. sensor local coordinate system, '
                       'from SDI, integrated values converted to calibrated sensor data'),
       ('Units', 'meter/second^2'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    self._data_notes['awinda-imu']['acceleration-y'] = OrderedDict([
-      ('Description', 'Linear acceleration in the Y direction w.r.t. sensor local coordinate system, '
-                      'from SDI, integrated values converted to calibrated sensor data'),
-      ('Units', 'meter/second^2'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['awinda-imu']['acceleration-z'] = OrderedDict([
-      ('Description', 'Linear acceleration in the Z direction w.r.t. sensor local coordinate system, '
-                      'from SDI, integrated values converted to calibrated sensor data'),
-      ('Units', 'meter/second^2'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['awinda-imu']['gyroscope-x'] = OrderedDict([
-      ('Description', 'Angular velocity in the X direction w.r.t. sensor local coordinate system, '
+    self._data_notes['awinda-imu']['gyroscope'] = OrderedDict([
+      ('Description', 'Angular velocity vector [X,Y,Z] w.r.t. sensor local coordinate system, '
                       'from SDI, integrated values converted to calibrated sensor data'),
       ('Units', 'rad/second'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    self._data_notes['awinda-imu']['gyroscope-y'] = OrderedDict([
-      ('Description', 'Angular velocity in the Y direction w.r.t. sensor local coordinate system, '
-                      'from SDI, integrated values converted to calibrated sensor data'),
-      ('Units', 'rad/second'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['awinda-imu']['gyroscope-z'] = OrderedDict([
-      ('Description', 'Angular velocity in the Z direction w.r.t. sensor local coordinate system, '
-                      'from SDI, integrated values converted to calibrated sensor data'),
-      ('Units', 'rad/second'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['awinda-imu']['magnetometer-x'] = OrderedDict([
-      ('Description', 'Magnetometer reading in the X direction, '
+    self._data_notes['awinda-imu']['magnetometer'] = OrderedDict([
+      ('Description', 'Magnetic field  vector [X,Y,Z] w.r.t. sensor local coordinate system, '
                       'from SDI, integrated values converted to calibrated sensor data'),
       ('Units', 'arbitrary unit normalized to earth field strength during factory calibration, '
                 'w.r.t. sensor local coordinate system'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    self._data_notes['awinda-imu']['magnetometer-y'] = OrderedDict([
-      ('Description', 'Magnetometer reading in the Y direction, '
-                      'from SDI, integrated values converted to calibrated sensor data'),
-      ('Units', 'arbitrary unit normalized to earth field strength during factory calibration, '
-                'w.r.t. sensor local coordinate system'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['awinda-imu']['magnetometer-z'] = OrderedDict([
-      ('Description', 'Magnetometer reading in the Z direction, '
-                      'from SDI, integrated values converted to calibrated sensor data'),
-      ('Units', 'arbitrary unit normalized to earth field strength during factory calibration, '
-                'w.r.t. sensor local coordinate system'),
-      (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
-    ])
-    self._data_notes['awinda-imu']['orientation'] = OrderedDict([
+    self._data_notes['awinda-imu']['quaternion'] = OrderedDict([
       ('Description', 'Quaternion rotation vector [W,X,Y,Z]'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
@@ -279,12 +193,12 @@ class AwindaStream(Stream):
       ('Units', 'microsecond in range [0, (2^32)-1]'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    self._data_notes['dots-imu']['toa_s'] = OrderedDict([
+    self._data_notes['awinda-imu']['toa_s'] = OrderedDict([
       ('Description', 'Time of arrival of the packet w.r.t. system clock.'),
       ('Units', 'seconds'),
       (Stream.metadata_data_headings_key, list(self._device_mapping.values())),
     ])
-    self._data_notes['dots-imu']['counter'] = OrderedDict([
+    self._data_notes['awinda-imu']['counter'] = OrderedDict([
       ('Description', 'Index of the sampled packet per device, w.r.t. the start of the recording, starting from 0. '
                       'At sample rate of 60Hz, corresponds to ~19884 hours of recording, longer than the battery life of the sensors.'),
       ('Range', '[0, (2^32)-1]'),

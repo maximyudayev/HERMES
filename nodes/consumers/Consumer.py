@@ -29,6 +29,7 @@ import threading
 from handlers.LoggingHandler import Logger
 from nodes.Node import Node
 from nodes.producers.Producer import Producer
+from nodes.pipelines.Pipeline import Pipeline
 from nodes.pipelines import PIPELINES
 from nodes.producers import PRODUCERS
 from streams import Stream
@@ -56,14 +57,10 @@ class Consumer(Node):
                port_sub: str = PORT_FRONTEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
-               log_history_filepath: str = None,
-               print_status: bool = True,
-               print_debug: bool = False) -> None:
+               log_history_filepath: str | None = None) -> None:
     super().__init__(host_ip=host_ip,
                      port_sync=port_sync, 
-                     port_killsig=port_killsig, 
-                     print_status=print_status, 
-                     print_debug=print_debug)
+                     port_killsig=port_killsig)
     self._port_sub = port_sub
     self._log_history_filepath = log_history_filepath
 
@@ -77,8 +74,8 @@ class Consumer(Node):
       class_args = stream_spec.copy()
       del(class_args['class'])
       # Create the class object.
-      class_type: type[Producer] = {**PRODUCERS,**PIPELINES}[class_name]
-      class_object: Stream = class_type.create_stream(class_type, class_args)
+      class_type: type[Producer] | type[Pipeline] = {**PRODUCERS,**PIPELINES}[class_name]
+      class_object: Stream = class_type.create_stream(class_args)
       # Store the streamer object.
       self._streams.setdefault(class_type._log_source_tag(), class_object)
       self._is_producer_ended.setdefault(class_type._log_source_tag(), False)
@@ -112,6 +109,10 @@ class Consumer(Node):
     if self._sub in poll_res[0]:
       self._poll_data_fn()
     super()._on_poll(poll_res)
+
+
+  def _on_sync_complete(self) -> None:
+    pass
 
 
   # In normal operation mode, all messages are 2-part.
@@ -153,5 +154,12 @@ class Consumer(Node):
     # Finish up the file saving before exitting.
     self._logger.cleanup()
     self._logger_thread.join()
+    # Before closing the PUB socket, wait for the 'BYE' signal from the Broker.
+    self._sync.send_multipart([self._log_source_tag().encode('utf-8'), CMD_EXIT.encode('utf-8')]) 
+    host, cmd = self._sync.recv_multipart() # no need to read contents of the message.
+    print("%s received %s from %s." % (self._log_source_tag(),
+                                       cmd.decode('utf-8'),
+                                       host.decode('utf-8')),
+                                       flush=True)
     self._sub.close()
     super()._cleanup()

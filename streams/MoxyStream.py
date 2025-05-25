@@ -38,7 +38,7 @@ class MoxyStream(Stream):
   def __init__(self, 
                devices: list[str],
                sampling_rate_hz: float = 0.5,
-               transmission_delay_period_s: int = None,
+               transmission_delay_period_s: int | None = None,
                **_) -> None:
     super().__init__()
     self._devices = devices
@@ -67,11 +67,11 @@ class MoxyStream(Stream):
         self.add_stream(device_name='moxy-%s-connection'%dev,
                         stream_name='transmission_delay',
                         data_type='float32',
-                        sample_size=(1),
+                        sample_size=(1,),
                         sampling_rate_hz=1.0/self._transmission_delay_period_s)
 
   
-  def get_fps(self) -> dict[str, float]:
+  def get_fps(self) -> dict[str, float | None]:
     return {device: super()._get_fps(device, 'counter') for device in self._devices}
 
 
