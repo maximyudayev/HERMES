@@ -64,7 +64,7 @@ class TmsiStreamer(Producer):
                port_killsig: str = PORT_KILL,
                transmit_delay_sample_period_s: float = float('nan'),
                **_)-> None:
-    
+
     stream_info = {
       "sampling_rate_hz": sampling_rate_hz
     }
@@ -133,13 +133,13 @@ class TmsiStreamer(Producer):
 
         # Choose the desired DR-DS interface type.
         self.device.set_device_interface(DeviceInterfaceType.wifi)
-        
+
         # Close the connection to the device (with the original interface type).
         self.device.close()
-        
+
       time.sleep(3)
       print('wifi setup starting', flush=True)
-      
+
       # Connection over wifi.
       TMSiSDK().discover(dev_type=DeviceType.saga,
                          dr_interface=DeviceInterfaceType.wifi,

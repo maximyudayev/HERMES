@@ -52,6 +52,12 @@ class InsoleStream(Stream):
     self._define_data_notes()
 
     self.add_stream(device_name='insoles-data',
+                    stream_name='toa_s',
+                    data_type='float64',
+                    sample_size=(1,),
+                    sampling_rate_hz=self._sampling_rate_hz,
+                    data_notes=self._data_notes['insoles-data']['toa_s'])
+    self.add_stream(device_name='insoles-data',
                     stream_name='timestamp',
                     data_type='float32',
                     sample_size=[1],
@@ -146,6 +152,10 @@ class InsoleStream(Stream):
 
     self._data_notes['insoles-data']['timestamp'] = OrderedDict([
       ('Description', 'Device time of sampling of the insole data'),
+    ])
+    self._data_notes['insoles-data']['toa_s'] = OrderedDict([
+      ('Description', 'Time of arrival of the packet w.r.t. system clock.'),
+      ('Units', 'seconds'),
     ])
     self._data_notes['insoles-data']['foot_pressure_left'] = OrderedDict([
       ('Description', 'Pressure across the 16 strain gauge grid across the left insole'),

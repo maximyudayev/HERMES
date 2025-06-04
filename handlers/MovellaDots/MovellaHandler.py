@@ -91,6 +91,7 @@ class MovellaFacade:
                                               sampling_period=sampling_period,
                                               num_bits_timestamp=32)
     self._packet_queue = queue.Queue()
+    self._is_more = True
     self._master_device_id = device_mapping[master_device]
     self._sampling_rate_hz = sampling_rate_hz
     self._is_sync_devices = is_sync_devices
@@ -102,7 +103,6 @@ class MovellaFacade:
 
 
   def initialize(self) -> bool:
-    self._is_more = True
     # Create connection manager
     self._manager = mdda.XsDotConnectionManager() # type: ignore
     if self._manager is None:
@@ -193,8 +193,8 @@ class MovellaFacade:
 
     self._data_callback = DotDataCallback(on_packet_received=on_packet_received)
     self._manager.addXsDotCallbackHandler(self._data_callback)
-    self._packet_funneling_thread.start()
 
+    self._packet_funneling_thread.start()
     return True
 
 
