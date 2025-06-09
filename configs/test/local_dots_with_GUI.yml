@@ -1,0 +1,87 @@
+############
+#
+# Copyright (c) 2024 Maxim Yudayev and KU Leuven eMedia Lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Created 2024-2025 for the KU Leuven AidWear, AidFOG, and RevalExo projects
+# by Maxim Yudayev [https://yudayev.com].
+#
+# ############
+
+
+host_ip : "127.0.0.1"
+is_master_broker: True
+
+remote_subscriber_ips: []
+remote_publisher_ips: []
+
+is_remote_kill: False
+remote_kill_ip: null
+
+
+logging_spec:
+  stream_period_s     : 30
+  
+  stream_hdf5         : True
+  stream_csv          : False
+  stream_video        : False
+  stream_audio        : False
+
+  dump_csv            : False
+  dump_hdf5           : False
+  dump_video          : False
+  dump_audio          : False
+
+  video_codec_config_filepath : "resources/codecs/backpack_h264_qsv.yml" 
+  video_codec_num_cpu : 1
+
+  audio_format        : "wav" # currently only supports WAV
+
+
+producer_specs:
+  - class: "DotsStreamer"
+    device_mapping:
+      foot_right      : "40195BF3809B009E"
+      knee_right      : "40195C09807000DF"
+      pelvis          : "40195C0980700122"
+      knee_left       : "40195C09807001AE"
+      foot_left       : "40195C0980700109"
+    mac_mapping:
+      knee_right      : "D422CD00AA23"
+      foot_right      : "D422CD00A1D7"
+      pelvis          : "D422CD00A8DF"
+      knee_left       : "D422CD00A922"
+      foot_left       : "D422CD00A8C6"
+    master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
+    num_joints        : 5
+    sampling_rate_hz  : 60 # [1, 4, 10, 12, 15, 20, 30, 60]
+    payload_mode      : "RateQuantitieswMag"
+    filter_profile    : "General"
+    is_sync_devices   : True
+
+
+consumer_specs: []
+
+
+pipeline_specs: []
+
+external_gui_specs:
+  gui_ip: "192.168.0.246" # TODO set this dynamically with GUI discovery process
+  gui_port: "54600"

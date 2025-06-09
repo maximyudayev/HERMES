@@ -280,5 +280,22 @@
       "subProcess": true,
       "justMyCode": false
     },
+    {
+      "name": "Local DOTs with external GUI",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "main.py",
+      "args": [
+        "--experiment", "project=Tests", "type=DOTs", "trial=0",
+        "--config_file", "configs/test/local_dots_with_GUI.yml"
+      ],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal",
+      "subProcess": true,
+      "justMyCode": false
+    },
   ]
 }

@@ -171,7 +171,7 @@ class DotsStreamer(Producer):
       self._publish(tag, process_time_s=process_time_s, data={'dots-imu': data})
 
       if self.GUIposter:
-        self.GUIposter.append_to_data_buffer(data)
+        self.GUIposter.append_to_data_buffer(data['acceleration'])
 
     elif not self._is_continue_capture:
       # If triggered to stop and no more available data, send empty 'END' packet and join.

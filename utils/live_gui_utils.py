@@ -37,9 +37,9 @@ class LiveGUIPoster:
         return False
         
     def post_data_UDP(self) -> None:
-        for i in range(self._num_joints):
+        for i in range(self._data_buffer.shape[0]):
             samples = self._data_buffer[i]   
-            payload = f"sensor||{self.tag()}-{i+1}||{self._data_buffer_counter}||".encode() + samples.tobytes()
+            payload = f"sensor||{self.tag}-{i+1}||{self._data_buffer_counter}||".encode() + samples.tobytes()
             self.GUIsocket.sendto(payload, (self.ip_gui, self.port_gui))
         
     def flush_data_buffer(self) -> None:
