@@ -49,36 +49,25 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_config_filepath : "resources/codecs/backpack_h264_qsv.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
 
 
 producer_specs:
-  # Stream from the Moxy sensors
-  # - class: "MoxyStreamer"
-  #   devices: 
-  #     - "8003"
-  #     - "8523"
-  #     - "8004"
-  #     - "8524"
-  #     - "8005"
-  #     - "8525"
-  #   sampling_rate_hz: 0.5
-
   - class: "AwindaStreamer"
-    device_mapping: 
+    device_mapping:
       pelvis          : "00B4D3E4"
+      upper_leg_right : "00B4D3D7"
+      lower_leg_right : "00B4D3E2"
+      foot_right      : "00B4D3DD"
       upper_leg_left  : "00B4D3E7"
       lower_leg_left  : "00B4D3D4"
       foot_left       : "00B4D3D8"
-      upper_leg_right  : "00B4D3D7"
-      lower_leg_right  : "00B4D3E2"
-      foot_right       : "00B4D3DD"
-
     num_joints        : 7
-    sampling_rate_hz  : 60
+    sampling_rate_hz  : 100
+    radio_channel     : 15
 
 
 consumer_specs: []

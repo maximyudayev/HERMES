@@ -25,6 +25,7 @@
 #
 # ############
 
+from collections import OrderedDict
 from streams import Stream
 import dash_bootstrap_components as dbc
 
@@ -32,33 +33,61 @@ import dash_bootstrap_components as dbc
 ##################################################
 ##################################################
 # A structure to store PyTorch prediction outputs.
+# TODO: use user parameters to specify model 
+#   output configuration 
+#   (i.e. classifier, regressor, embedding, etc.)
 ##################################################
 ##################################################
 class PytorchStream(Stream):
-  def __init__(self, 
+  def __init__(self,
+               classes: list[str],
+               sampling_rate_hz: float,
                **_) -> None:
     super().__init__()
 
-    # TODO: use user parameters to specify model output configuration (i.e. classifier, regressor, embedding, etc.)
-    self.add_stream(device_name='predictor',
-                    stream_name='prediction',
-                    data_type='float32',
-                    sample_size=[1],
-                    is_measure_rate_hz=True)
+    self._classes = classes
+    self._define_data_notes()
 
-    self.add_stream(device_name='predictor',
-                    stream_name='inference_start_time_s',
+    self.add_stream(device_name='pytorch-worker',
+                    stream_name='prediction',
+                    data_type='uint16',
+                    sample_size=(1,),
+                    sampling_rate_hz=sampling_rate_hz,
+                    is_measure_rate_hz=True,
+                    data_notes=self._data_notes['pytorch-worker']['prediction'])
+    self.add_stream(device_name='pytorch-worker',
+                    stream_name='logits',
                     data_type='float64',
-                    sample_size=[1])
-    self.add_stream(device_name='predictor',
-                    stream_name='inference_end_time_s',
+                    sample_size=(len(classes),),
+                    data_notes=self._data_notes['pytorch-worker']['logits'])
+    self.add_stream(device_name='pytorch-worker',
+                    stream_name='inference_latency_s',
                     data_type='float64',
-                    sample_size=[1])
+                    sample_size=(1,),
+                    data_notes=self._data_notes['pytorch-worker']['inference_latency_s'])
 
   
   def get_fps(self) -> dict[str, float | None]:
-    return {'predictor': super()._get_fps('predictor', 'timestamp_prediction')}
+    return {'pytorch-worker': super()._get_fps('pytorch-worker', 'prediction')}
 
 
   def build_visulizer(self) -> dbc.Row | None:
     return super().build_visulizer()
+  
+
+  def _define_data_notes(self) -> None:
+    self._data_notes = {}
+    self._data_notes.setdefault('pytorch-worker', {})
+
+    self._data_notes['pytorch-worker']['logits'] = OrderedDict([
+      ('Description', 'Probability vector'),
+      ('Range', '[0,1]'),
+      (Stream.metadata_data_headings_key, self._classes),
+    ])
+    self._data_notes['pytorch-worker']['prediction'] = OrderedDict([
+      ('Description', 'Label of the most likely class prediction'),
+    ])
+    self._data_notes['pytorch-worker']['inference_latency_s'] = OrderedDict([
+      ('Description', 'Amount of time it took for the forward pass for the new sample w.r.t. system clock'),
+      ('Units', 'seconds'),
+    ])

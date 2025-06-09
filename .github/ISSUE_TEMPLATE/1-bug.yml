@@ -1,0 +1,84 @@
+name: "\U0001F41B Bug"
+description: Report an issue when running the system
+title: "[BUG]: <catchy title>"
+labels: ["bug", "needs triage"]
+assignees:
+  - maximyudayev
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Let's get this solved so you can carry on ASAP!
+  - type: checkboxes
+    attributes:
+      label: Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the bug you encountered.
+      options:
+      - label: I have searched the existing issues
+        required: true
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: What happened?
+      description: Describe what the bug is clearly and concisely.
+      placeholder: e.g. The data acquisition doesn't start when using multiple machines on the LAN/WLAN.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: What did you expect to happen?
+      description: Describe at a high-level, from the point of user, how you expected it to work.
+      placeholder: e.g. I expected that after launching on one machine all other machines would launch automatically and start acquisition.
+  - type: textarea
+    id: error-log
+    attributes:
+      label: Error message
+      description: Copy-paste the error from the terminal log. This will be automatically formatted into code, so no need for backticks.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: how-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Describe what steps led to the behavior. Add the CLI arguments you used to launch the system.
+      placeholder: |
+        1. Set CLI arguments to '...'
+        2. Click on '....'
+        3. Run for '....'
+        4. See error
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Code version
+      description: What version of our software are you running? (i.e. release or branch or commit).
+      placeholder: main
+      value: main
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: What operating system are you seeing the problem on?
+      multiple: false
+      options:
+        - Windows
+        - Linux
+        - macOS
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: What is the detailed setup of your acquisition?
+      description: (Optional) Provide additional context about how you are connecting things and what is on them.
+      placeholder: |
+        1. Hardware [e.g. list of sensors, PCs with specs, how PCs connected, which PC each sensor is connected to]
+        2. Software [e.g. FFmpeg version, sensor SDK version, Python version, packages installed with pip or conda]
+        3. Network [e.g. WLAN, LAN, IPoverUSB, RF band, subnet, IPs, firewall]
+    validations:
+      required: true

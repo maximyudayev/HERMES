@@ -25,15 +25,6 @@
 #
 # ############
 
-project       : "DummyTest"
-trial_type    : "test" # recommend "test" for testing and "real" data
-subject_id    : 0 # UID of the subject
-trial_id      : 0 # UID of the trial
-duration_s    : null
-
-print_status  : True
-print_debug   : True
-
 
 host_ip : "127.0.0.1"
 is_master_broker: True
@@ -58,14 +49,13 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_config_filepath : "resources/codecs/elitebook835_h264_amf.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
 
 
 producer_specs:
-  # Stream from one or more cameras.
   - class: "MvnAnalyzeStreamer"
     mvn_setup           : "full_body"
     sampling_rate_hz    : 60
@@ -79,7 +69,7 @@ producer_specs:
     is_time_code        : True
 
 
-consumer_specs: [] # DataVisualizer and DataLogger are mutually exclusive, select only one.
+consumer_specs: []
 
 
 pipeline_specs: []

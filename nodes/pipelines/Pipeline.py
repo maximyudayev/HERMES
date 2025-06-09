@@ -68,11 +68,10 @@ class Pipeline(Node):
     self._is_more_data_in = True
     self._publish_fn = lambda tag, kwargs: None
 
-    # Data structure for keeping track of data.
+    # Data structure for keeping track of the Pipeline's output data.
     self._out_stream: Stream = self.create_stream(stream_info)
 
     # Instantiate all desired Streams that the Pipeline will process.
-    # NOTE: inheriting Nodes must add extra logger if desired to save inputs that are used to process outputs.
     self._in_streams: OrderedDict[str, Stream] = OrderedDict()
     self._poll_data_fn = self._poll_data_packets
     self._is_producer_ended: OrderedDict[str, bool] = OrderedDict()
@@ -87,11 +86,11 @@ class Pipeline(Node):
       self._in_streams.setdefault(class_type._log_source_tag(), class_object)
       self._is_producer_ended.setdefault(class_type._log_source_tag(), False)
 
-    # Create the DataLogger object
+    # Create the Logger object.
     self._logger = Logger(self._log_source_tag(), **logging_spec)
 
-    # Launch datalogging thread with reference to the Stream object, to save Pipeline's outputs.
-    self._logger_thread = threading.Thread(target=self._logger, 
+    # Launch datalogging thread with reference to the Stream objects, to save Pipeline's outputs and inputs.
+    self._logger_thread = threading.Thread(target=self._logger,
                                            args=(OrderedDict([
                                              (self._log_source_tag(), self._out_stream),
                                              *list(self._in_streams.items())
@@ -127,7 +126,6 @@ class Pipeline(Node):
   # Launch data receiving and result producing.
   def _activate_data_poller(self) -> None:
     self._poller.register(self._sub, zmq.POLLIN)
-    self._poller.register(self._pub, zmq.POLLOUT)
 
 
   # Process custom event first, then Node generic (killsig).
@@ -135,8 +133,6 @@ class Pipeline(Node):
     if self._sub in poll_res[0]:
       # Receiving a modality packet, process until all data sources sent 'END' packet.
       self._poll_data_fn()
-    if self._pub in poll_res[0]:
-      # Process available data and put result on the network.
       self._process_data()
     super()._on_poll(poll_res)
 

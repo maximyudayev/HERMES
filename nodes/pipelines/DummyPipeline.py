@@ -28,7 +28,7 @@
 from nodes.pipelines.Pipeline import Pipeline
 from streams import DummyStream
 
-import time
+from utils.time_utils import get_time
 from utils.zmq_utils import *
 
 
@@ -68,7 +68,7 @@ class DummyPipeline(Pipeline):
 
   def _process_data(self) -> None:
     if self._is_continue_produce:
-      process_time_s: float = time.time()
+      process_time_s: float = get_time()
       tag: str = "%s.data" % self._log_source_tag()
       self._publish(tag, time_s=process_time_s, data=process_time_s)
     elif not self._is_continue_produce:

@@ -153,9 +153,9 @@ class Producer(Node):
 
   def _store_and_broadcast(self, tag: str, **kwargs) -> None:
     # Get serialized object to send over ZeroMQ.
-    # msg = serialize(**kwargs)
+    msg = serialize(**kwargs)
     # Send the data packet on the PUB socket.
-    # self._pub.send_multipart([tag.encode('utf-8'), msg])
+    self._pub.send_multipart([tag.encode('utf-8'), msg])
     # Store the captured data into the data structure.
     self._stream.append_data(**kwargs)
 

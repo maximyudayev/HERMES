@@ -39,7 +39,7 @@ StreamInfoDict: TypeAlias = Dict[str, Dict[str, Dict[str, Any]]]
 DeviceLockDict: TypeAlias = Dict[str, Lock]
 ExtraDataInfoDict: TypeAlias = Dict[str, Dict[str, Any]]
 VideoFormatTuple = namedtuple('VideoFormatTuple', ('ffmpeg_input_format', 'ffmpeg_pix_fmt', 'cv2_cvt_color'))
-VideoCodecDict = TypedDict('VideoCodecDict', {'codec_name': str, 'pix_format': str, 'options': Mapping})
+VideoCodecDict = TypedDict('VideoCodecDict', {'codec_name': str, 'pix_format': str, 'input_options': Mapping, 'output_options': Mapping})
 ZMQResult: TypeAlias = Iterable[tuple[zmq.SyncSocket, int]]
 
 

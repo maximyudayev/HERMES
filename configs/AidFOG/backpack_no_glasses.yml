@@ -25,28 +25,20 @@
 #
 # ############
 
-project       : "DummyTest"
-trial_type    : "test" # recommend "test" for testing and "real" data
-subject_id    : 0 # UID of the subject
-trial_id      : 0 # UID of the trial
-duration_s    : null
 
-print_status  : True
-print_debug   : True
+host_ip : "192.168.0.103"
+is_master_broker: False
 
-
-host_ip : "127.0.0.1"
-is_master_broker: True
-
-remote_subscriber_ips: []
+remote_subscriber_ips: 
+  - "192.168.0.100"
 remote_publisher_ips: []
 
-is_remote_kill: False
-remote_kill_ip: null
+is_remote_kill: True
+remote_kill_ip: "192.168.0.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
 
 
 logging_spec:
-  stream_period_s     : 30
+  stream_period_s     : 10
   
   stream_hdf5         : True
   stream_csv          : False
@@ -58,25 +50,33 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_config_filepath : "resources/codecs/backpack_h264_qsv.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
 
 
 producer_specs:
-  - class: "ViconStreamer"
+  # Stream from the DOTs lower limb tracking.
+  - class: "DotsStreamer"
     device_mapping:
-      gluteus_medius_left         : "1" # left upper glute
-      rectus_femoris_left         : "2" # left quad
-      semitendius_left            : "3" # left hamstring
-      medial_gastrocnemius_left   : "4" # left inner calf
-      gluteus_medius_right        : "5" # right upper glute
-      rectus_femoris_right        : "6" # right quad
-      semitendius_right           : "7" # right hamstring
-      medial_gastrocnemius_right  : "8" # right inner calf
-    sampling_rate_hz: 2000
-    vicon_ip: "192.168.0.104"
+      foot_right      : "40195BF3809B009E"
+      knee_right      : "40195C09807000DF"
+      pelvis          : "40195C0980700122"
+      knee_left       : "40195C09807001AE"
+      foot_left       : "40195C0980700109"
+    mac_mapping:
+      knee_right      : "D422CD00AA23"
+      foot_right      : "D422CD00A1D7"
+      pelvis          : "D422CD00A8DF"
+      knee_left       : "D422CD00A922"
+      foot_left       : "D422CD00A8C6"
+    master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
+    num_joints        : 5
+    sampling_rate_hz  : 60 # [1, 4, 10, 12, 15, 20, 30, 60]
+    payload_mode      : "RateQuantitieswMag"
+    filter_profile    : "General"
+    is_sync_devices   : True
 
 
 consumer_specs: []

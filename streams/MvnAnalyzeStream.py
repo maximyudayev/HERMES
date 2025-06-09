@@ -119,8 +119,8 @@ MVN_JOINT_MAPPING = {
 class MvnSegmentSetup(dict, Enum):
   FULL_BODY = MVN_SEGMENT_MAPPING
   FULL_BODY_NO_HANDS = {k:v for k, v in MVN_SEGMENT_MAPPING.items() if k not in [11,15]}
-  LOWER_BODY = {k:v for k, v in MVN_SEGMENT_MAPPING.items() if k in [1,2,3,15,16,17,18,19,20,21,22]}
-  LOWER_BODY_W_STERNUM = {k:v for k, v in MVN_SEGMENT_MAPPING.items() if k in [1,2,3,4,5,12,13,14,15,16,17]}
+  LOWER_BODY = {k:v for k, v in MVN_SEGMENT_MAPPING.items() if k in [1,2,3,16,17,18,19,20,21,22,23]}
+  LOWER_BODY_W_STERNUM = {k:v for k, v in MVN_SEGMENT_MAPPING.items() if k in [1,2,3,4,5,16,17,18,19,20,21,22,23]}
   UPPER_BODY = {k:v for k, v in MVN_SEGMENT_MAPPING.items() if k in [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]}
   UPPER_BODY_NO_HANDS = {k:v for k, v in MVN_SEGMENT_MAPPING.items() if k in [1,2,3,4,5,6,7,8,9,10,12,13,14]}
 
@@ -134,11 +134,11 @@ class MvnJointSetup(dict, Enum):
 
 class MvnSensorSetup(dict, Enum):
   FULL_BODY = MVN_SENSOR_MAPPING
-  FULL_BODY_NO_HANDS = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k not in [7,11]}
-  LOWER_BODY = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k in [1,12,13,14,15,16,17]}
-  LOWER_BODY_W_STERNUM = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k in [1,2,12,13,14,15,16,17]}
-  UPPER_BODY = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k in [1,2,3,4,5,6,7,8,9,10,11]}
-  UPPER_BODY_NO_HANDS = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k in [1,2,3,4,5,6,8,9,10]}
+  FULL_BODY_NO_HANDS = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k not in [11,15]}
+  LOWER_BODY = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k in [1,16,17,18,20,21,22]}
+  LOWER_BODY_W_STERNUM = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k in [1,5,16,17,18,20,21,22]}
+  UPPER_BODY = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k in [1,5,7,8,9,10,11,12,13,14,15]}
+  UPPER_BODY_NO_HANDS = {k:v for k, v in MVN_SENSOR_MAPPING.items() if k in [1,5,7,8,9,10,12,13,14]}
 
 
 MVN_SEGMENT_SETUP = {

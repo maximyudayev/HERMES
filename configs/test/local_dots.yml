@@ -25,15 +25,6 @@
 #
 # ############
 
-project       : "DummyTest"
-trial_type    : "test" # recommend "test" for testing and "real" data
-subject_id    : 0 # UID of the subject
-trial_id      : 0 # UID of the trial
-duration_s    : null
-
-print_status  : True
-print_debug   : True
-
 
 host_ip : "127.0.0.1"
 is_master_broker: True
@@ -58,7 +49,7 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_config_filepath : "resources/codecs/backpack_h264_qsv.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
@@ -66,15 +57,21 @@ logging_spec:
 
 producer_specs:
   - class: "DotsStreamer"
-    device_mapping: 
-      knee_right      : "40195BFC800B01F2"
-      foot_right      : "40195BFC800B003B"
-      pelvis          : "40195BFD80C20052"
-      knee_left       : "40195BFC800B017A"
-      foot_left       : "40195BFD80C200D1"
+    device_mapping:
+      foot_right      : "40195BF3809B009E"
+      knee_right      : "40195C09807000DF"
+      pelvis          : "40195C0980700122"
+      knee_left       : "40195C09807001AE"
+      foot_left       : "40195C0980700109"
+    mac_mapping:
+      knee_right      : "D422CD00AA23"
+      foot_right      : "D422CD00A1D7"
+      pelvis          : "D422CD00A8DF"
+      knee_left       : "D422CD00A922"
+      foot_left       : "D422CD00A8C6"
     master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
     num_joints        : 5
-    sampling_rate_hz  : 4 # [1, 4, 10, 12, 15, 20, 30, 60]
+    sampling_rate_hz  : 60 # [1, 4, 10, 12, 15, 20, 30, 60]
     payload_mode      : "RateQuantitieswMag"
     filter_profile    : "General"
     is_sync_devices   : True

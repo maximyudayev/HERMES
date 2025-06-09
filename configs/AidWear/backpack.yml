@@ -25,15 +25,6 @@
 #
 # ############
 
-project       : "AidWear"
-trial_type    : "test" # recommend "test" for testing and "real" data
-subject_id    : 0 # UID of the subject
-trial_id      : 0 # UID of the trial
-duration_s    : null
-
-print_status  : True
-print_debug   : True
-
 
 host_ip : "192.168.0.103"
 is_master_broker: False
@@ -59,39 +50,24 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml"
+  video_codec_config_filepath : "resources/codecs/backpack_h264_qsv.yml"
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
 
 
 producer_specs:
-  # Stream from the DOTs lower limb tracking.
-  - class: "DotsStreamer"
-    device_mapping: 
-      knee_right      : "40195BFC800B01F2"
-      foot_right      : "40195BFC800B003B"
-      pelvis          : "40195BFD80C20052"
-      knee_left       : "40195BFC800B017A"
-      foot_left       : "40195BFD80C200D1"
-    master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
-    num_joints        : 5
-    sampling_rate_hz  : 60
-    payload_mode      : "RateQuantitieswMag"
-    filter_profile    : "General"
-    is_sync_devices   : True
-  
   # Stream from the Pupil Labs eye tracker, including gaze and video data.
   - class: "EyeStreamer"
     pupil_capture_ip        : "localhost"
     pupil_capture_port      : "50020"
-    video_image_format      : "bgr"
+    video_image_format      : "jpeg"
     gaze_estimate_stale_s   : 0.2
-    is_binocular            : True # uses both eyes for gaze data and for video
+    is_binocular            : True # uses both eyes for gaze data and for video.
     is_stream_video_world   : True
     is_stream_video_eye     : False
-    is_stream_fixation      : False
-    is_stream_blinks        : False
+    is_stream_fixation      : True
+    is_stream_blinks        : True
     shape_video_world: 
       - 720
       - 1280

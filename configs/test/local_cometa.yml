@@ -25,25 +25,15 @@
 #
 # ############
 
-project       : "AidWear"
-trial_type    : "test" # recommend "test" for testing and "real" data
-subject_id    : 0 # UID of the subject
-trial_id      : 0 # UID of the trial
-duration_s    : null
 
-print_status  : True
-print_debug   : True
+host_ip : "127.0.0.1"
+is_master_broker: True
 
-
-host_ip : "192.168.0.104"
-is_master_broker: False
-
-remote_subscriber_ips:
-  - "192.168.0.100"
+remote_subscriber_ips: []
 remote_publisher_ips: []
 
-is_remote_kill: True
-remote_kill_ip: "192.168.0.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
+is_remote_kill: False
+remote_kill_ip: null
 
 
 logging_spec:
@@ -59,14 +49,14 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_config_filepath : "resources/codecs/elitebook835_h264_amf.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
 
 
 producer_specs:
-  - class': "ViconStreamer"
+  - class: "CometaStreamer"
     device_mapping:
       gluteus_medius_left         : "1" # left upper glute
       rectus_femoris_left         : "2" # left quad
@@ -77,7 +67,6 @@ producer_specs:
       semitendius_right           : "7" # right hamstring
       medial_gastrocnemius_right  : "8" # right inner calf
     sampling_rate_hz: 2000
-    vicon_ip: "192.168.0.104"
 
 
 consumer_specs: []

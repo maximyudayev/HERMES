@@ -25,15 +25,6 @@
 #
 # ############
 
-project       : "AidFOG"
-trial_type    : "test" # recommend "test" for testing and "real" data
-subject_id    : 0 # UID of the subject
-trial_id      : 0 # UID of the trial
-duration_s    : null
-
-print_status  : True
-print_debug   : True
-
 
 host_ip : "192.168.0.100"
 is_master_broker: True
@@ -59,7 +50,7 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_config_filepath : "resources/codecs/p4_h264_qsv.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
@@ -69,15 +60,14 @@ producer_specs:
   # Stream from one or more cameras.
   - class: "CameraStreamer"
     camera_mapping: # map camera names (usable as device names in the HDF5 file) to capture device indexes
-      basler_north : "40478064"
-      basler_east  : "40549960"
-      basler_south : "40549975"
-      basler_west  : "40549976"
+      n1 : "40478064"
+      n2 : "40549960"
+      n3 : "40549975"
+      n4 : "40549976"
     fps: 30
     resolution:
       - 1440
       - 2560
-    camera_config_filepath: "resources/AidFOG/pylon_30fps_2K_40478064.pfs"
 
 
 consumer_specs: []

@@ -1,21 +1,11 @@
-project       : "RevalExo"
-trial_type    : "test" # recommend "test" for testing and "real" data
-subject_id    : 0 # UID of the subject
-trial_id      : 0 # UID of the trial
-duration_s    : null
-
-print_status  : True
-print_debug   : True
-
-
 host_ip       : "10.244.21.115"
 is_master_broker: True
 
 remote_subscriber_ips: []
 remote_publisher_ips: []
 
-is_remote_kill : False
-remote_kill_ip : null
+is_remote_kill: False
+remote_kill_ip: null
 
 
 logging_spec:

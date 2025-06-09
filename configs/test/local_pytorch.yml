@@ -49,23 +49,67 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/elitebook835_h264_amf.yml" 
+  video_codec_config_filepath : "resources/codecs/backpack_h264_qsv.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
 
 
 producer_specs:
-  # Stream from one or more cameras.
-  - class: "DummyProducer"
-    sampling_rate_hz: 1
+  - class: "DotsStreamer"
+    device_mapping:
+      foot_right      : "40195BF3809B009E"
+      knee_right      : "40195C09807000DF"
+      pelvis          : "40195C0980700122"
+      knee_left       : "40195C09807001AE"
+      foot_left       : "40195C0980700109"
+    mac_mapping:
+      knee_right      : "D422CD00AA23"
+      foot_right      : "D422CD00A1D7"
+      pelvis          : "D422CD00A8DF"
+      knee_left       : "D422CD00A922"
+      foot_left       : "D422CD00A8C6"
+    master_device     : "pelvis"
+    num_joints        : 5
+    sampling_rate_hz  : 60
+    payload_mode      : "RateQuantitieswMag"
+    filter_profile    : "General"
+    is_sync_devices   : True
 
 
-consumer_specs:
-  - class: "DummyConsumer"
-    stream_specs:
-      - class: "DummyProducer"
-        sampling_rate_hz: 1
+consumer_specs: []
+
+
+pipeline_specs:
+  - class: "PytorchWorker"
+    model_path: "resources/AidFOG/tcn_model.pth"
+    sampling_rate_hz  : 60
+    input_size:
+      - 5
+      - 6
+    output_classes:
+      - "none"
+      - "freezing"
+    stream_specs: 
+      - class: "DotsStreamer"
+        device_mapping:
+          foot_right      : "40195BF3809B009E"
+          knee_right      : "40195C09807000DF"
+          pelvis          : "40195C0980700122"
+          knee_left       : "40195C09807001AE"
+          foot_left       : "40195C0980700109"
+        mac_mapping:
+          knee_right      : "D422CD00AA23"
+          foot_right      : "D422CD00A1D7"
+          pelvis          : "D422CD00A8DF"
+          knee_left       : "D422CD00A922"
+          foot_left       : "D422CD00A8C6"
+        master_device     : "pelvis"
+        num_joints        : 5
+        sampling_rate_hz  : 60
+        payload_mode      : "RateQuantitieswMag"
+        filter_profile    : "General"
+        is_sync_devices   : True
 
     logging_spec:
       stream_period_s     : 30
@@ -80,10 +124,7 @@ consumer_specs:
       dump_video          : False
       dump_audio          : False
 
-      video_codec_config_filepath : "resources/codecs/elitebook835_h264_amf.yml" 
+      video_codec_config_filepath : "resources/codecs/backpack_h264_qsv.yml" 
       video_codec_num_cpu : 1
 
       audio_format        : "wav" # currently only supports WAV
-
-
-pipeline_specs: []

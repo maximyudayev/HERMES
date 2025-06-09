@@ -76,27 +76,8 @@ class XsensFacade:
                                                           timesteps_before_stale=timesteps_before_stale,
                                                           num_bits_timestamp=16)
     self._packet_queue = queue.Queue()
+    self._is_more = True
 
-  def on_each_packet_received(self, toa_s, device, packet) -> None:
-      if self._is_keep_data:
-        device_id: str = str(device.deviceId())
-        acc = packet.calibratedAcceleration()
-        gyr = packet.calibratedGyroscopeData()
-        mag = packet.calibratedMagneticField()
-        quaternion = packet.orientationQuaternion()
-        timestamp = packet.sampleTimeFine()
-        counter = packet.packetCounter()
-        data = {
-          "device_id":            device_id,
-          "acc":                  acc,
-          "gyr":                  gyr,
-          "mag":                  mag,
-          "quaternion":           quaternion,
-          "toa_s":                toa_s,
-          "timestamp":            timestamp,
-          "counter_onboard":      counter,
-        }
-        self._packet_queue.put({"key": device_id, "data": data, "counter": counter})
 
   def initialize(self) -> bool:
     self._is_measuring = True
@@ -156,17 +137,16 @@ class XsensFacade:
     #   into aligned Deque datastructure.
     def funnel_packets(packet_queue: queue.Queue, timeout: float = 5.0):
       while True:
-        if not self._is_keep_data: continue
-        else:
-          while True:
-            try:
-              next_packet = packet_queue.get(timeout=timeout)
-              self._buffer.plop(**next_packet)
-            except queue.Empty:
-              print("No more packets from Movella SDK, flush buffers into the output Queue.", flush=True)
-              self._buffer.flush()
-              break
-          break
+        try:
+          next_packet = packet_queue.get(timeout=timeout)
+          self._buffer.plop(**next_packet)
+        except queue.Empty:
+          if self._is_more:
+            continue
+          else:
+            print("No more packets from Xsens SDK, flush buffers into the output Queue.", flush=True)
+            self._buffer.flush()
+            break
 
     self._packet_funneling_thread = threading.Thread(target=funnel_packets, args=(self._packet_queue,))
 
@@ -194,6 +174,7 @@ class XsensFacade:
 
   def cleanup(self) -> None:
     self._control.close()
+    self._is_more = False
     self._control.destruct()
 
   

@@ -142,16 +142,16 @@ class ViconStreamer(Producer):
         for output_name, component_name, unit in device_output_details:
           values, occluded = self._client.GetDeviceOutputValues(device_name, output_name, component_name)
           samples.append(values)
-        sample_block = np.array(samples)
+        sample_block = np.array(samples).T # TODO: check the dimension ordering -> should loop over time.
 
-        for samples in sample_block.T: # TODO: check the dimension ordering -> should loop over time.
-          tag: str = "%s.data" % self._log_source_tag()
-          data = {
-            'emg': sample_block,
-            'counter': frame_number,
-            'latency': 0.0, # TODO: get latency measurement from Vicon?
-          }
-          self._publish(tag=tag, process_time_s=process_time_s, data={'vicon-data': data})
+        # NOTE: can now pass a block of samples into the Stream object, as long as the first dimension is batch over time.
+        tag: str = "%s.data" % self._log_source_tag()
+        data = {
+          'emg': sample_block,
+          'counter': frame_number,
+          # 'latency': 0.0, # TODO: get latency measurement from Vicon?
+        }
+        self._publish(tag=tag, process_time_s=process_time_s, data={'vicon-data': data})
     except ViconDataStream.DataStreamException as e:
       print(e)
     finally:

@@ -58,34 +58,6 @@ if __name__ == '__main__':
                       action=ParseExperimentKwargs,
                       help='key-value pair tags detailing the experiment, used for '
                            'directory creation and metadata on files')
-  parser.add_argument('--host_ip',
-                      type=validate_ip,
-                      help='LAN IPv4 address of the host device')
-  parser.add_argument('--is_master',
-                      dest='is_master_broker',
-                      action='store_true',
-                      help='flag to set host as Master Broker that others connect to')
-  parser.add_argument('--subscriber_ips',
-                      nargs='*',
-                      dest='remote_subscriber_ips',
-                      type=validate_ip,
-                      default=list(),
-                      help='list of IPv4 devices listening to data of the host')
-  parser.add_argument('--publisher_ips',
-                      nargs='*',
-                      dest='remote_publisher_ips',
-                      type=validate_ip,
-                      default=list(),
-                      help='list of IPv4 devices to listen to for their data')
-  parser.add_argument('--kill',
-                      dest='is_remote_kill',
-                      action='store_true',
-                      help='flag to set host to listen to remote KILLSIG (only for slave devices)')
-  parser.add_argument('--kill_ip',
-                      dest='remote_kill_ip',
-                      type=validate_ip,
-                      help='LAN IPv4 address of device delegating KILLSIG (only for slave devices)')
-
   parser.add_argument('--time', '-t',
                       type=float,
                       dest='log_time_s',
@@ -130,12 +102,63 @@ if __name__ == '__main__':
                       help='path to the configuration file for the current host device, '
                            'instead of the CLI arguments')
 
+  # parser.add_argument('--host_ip',
+  #                     type=validate_ip,
+  #                     help='LAN IPv4 address of the host device')
+  # parser.add_argument('--is_master',
+  #                     dest='is_master_broker',
+  #                     action='store_true',
+  #                     help='flag to set host as Master Broker that others connect to')
+  # parser.add_argument('--subscriber_ips',
+  #                     nargs='*',
+  #                     dest='remote_subscriber_ips',
+  #                     type=validate_ip,
+  #                     default=list(),
+  #                     help='list of IPv4 devices listening to data of the host')
+  # parser.add_argument('--publisher_ips',
+  #                     nargs='*',
+  #                     dest='remote_publisher_ips',
+  #                     type=validate_ip,
+  #                     default=list(),
+  #                     help='list of IPv4 devices to listen to for their data')
+  # parser.add_argument('--kill',
+  #                     dest='is_remote_kill',
+  #                     action='store_true',
+  #                     help='flag to set host to listen to remote KILLSIG (only for slave devices)')
+  # parser.add_argument('--kill_ip',
+  #                     dest='remote_kill_ip',
+  #                     type=validate_ip,
+  #                     help='LAN IPv4 address of device delegating KILLSIG (only for slave devices)')
+
+
+  # parser.add_argument('--logging_spec',
+  #                     nargs='*',
+  #                     action=ParseLoggingKwargs,
+  #                     help='key-value pair tags configuring logging modules of each Node')
+
+  # parser.add_argument('--producer_specs',
+  #                     nargs='*',
+  #                     action=ParseNodeKwargs,
+  #                     default=list(),
+  #                     help='key-value pair tags detailing local producer Nodes of the host')
+  # parser.add_argument('--consumer_specs',
+  #                     nargs='*',
+  #                     action=ParseNodeKwargs,
+  #                     default=list(),
+  #                     help='key-value pair tags detailing local consumer Nodes of the host')
+  # parser.add_argument('--pipeline_specs',
+  #                     nargs='*',
+  #                     action=ParseNodeKwargs,
+  #                     default=list(),
+  #                     help='key-value pair tags detailing local pipeline Nodes of the host')
+
+
   # Parse launch arguments.
   args = parser.parse_args()
 
   # Override CLI arguments with a config file.
-  if config_path := args.config_file is not None:
-    with open(config_path, "r") as f:
+  if args.config_file is not None:
+    with open(args.config_file, "r") as f:
       try:
         config: dict = yaml.safe_load(f)
         parser.set_defaults(**config)
@@ -145,7 +168,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
   # Load video codec spec.
-  if 'stream_video' in args.logging_spec:
+  if 'stream_video' in args.logging_spec and args.logging_spec['stream_video']:
     with open(args.logging_spec['video_codec_config_filepath'], "r") as f:
       try:
         args.logging_spec['video_codec'] = yaml.safe_load(f)
@@ -168,8 +191,6 @@ if __name__ == '__main__':
 
   # TODO: ssh into remote IPs, distribute Node configs, experiment settings, and launch main.py on each device.
 
-
-
   args.logging_spec['log_dir'] = log_dir
   args.logging_spec['experiment'] = args.experiment
   args.logging_spec['log_time_s'] = log_time_s
@@ -181,7 +202,15 @@ if __name__ == '__main__':
   # Add logging spec to each consumer.
   for spec in args.consumer_specs:
     spec['logging_spec']['log_dir'] = log_dir
-    args['logging_spec']['experiment'] = args.experiment # type: ignore
+    spec['logging_spec']['experiment'] = args.experiment # type: ignore
+    spec['logging_spec']['log_time_s'] = log_time_s
+    spec['log_history_filepath'] = log_history_filepath
+
+  # Add logging spec to each consumer.
+  for spec in args.pipeline_specs:
+    spec['logging_spec']['log_dir'] = log_dir
+    spec['logging_spec']['experiment'] = args.experiment # type: ignore
+    spec['logging_spec']['log_time_s'] = log_time_s
     spec['log_history_filepath'] = log_history_filepath
 
   producer_specs: list[dict] = args.producer_specs

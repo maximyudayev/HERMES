@@ -53,6 +53,7 @@ class DotsStreamer(Producer):
                host_ip: str,
                logging_spec: dict,
                device_mapping: dict[str, str],
+               mac_mapping: dict[str, str],
                master_device: str,
                sampling_rate_hz: int = 60,
                num_joints: int = 5,
@@ -75,6 +76,7 @@ class DotsStreamer(Producer):
     self._filter_profile = filter_profile
     self._is_sync_devices = is_sync_devices
     self._device_mapping = device_mapping
+    self._mac_mapping = mac_mapping
     self._row_id_mapping = OrderedDict([(device_id, row_id) for row_id, device_id in enumerate(self._device_mapping.values())])
 
     self.GUIposter = None
@@ -118,6 +120,7 @@ class DotsStreamer(Producer):
 
   def _connect(self) -> bool:
     self._handler = MovellaFacade(device_mapping=self._device_mapping,
+                                  mac_mapping=self._mac_mapping,
                                   master_device=self._master_device,
                                   sampling_rate_hz=int(self._sampling_rate_hz),
                                   payload_mode=self._payload_mode,

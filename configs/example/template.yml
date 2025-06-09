@@ -25,15 +25,6 @@
 #
 # ############
 
-project       : "template"
-trial_type    : "test" # recommend "test" for testing and "real" data
-subject_id    : 0 # UID of the subject
-trial_id      : 0 # UID of the trial
-duration_s    : null
-
-print_status  : True
-print_debug   : True
-
 
 host_ip : "192.168.0.100"
 is_master_broker: True
@@ -41,10 +32,10 @@ is_master_broker: True
 remote_subscriber_ips: []
 remote_publisher_ips: # IPs of Brokers to listen to for data on some of desired topics
   - "192.168.0.103"
-  - "192.168.0.104"
+  - "192.168.0.200"
 
 is_remote_kill: False
-remote_kill_ip: "192.168.0.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
+remote_kill_ip: null
 
 
 logging_spec:
@@ -60,7 +51,7 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_amf.yml" 
+  video_codec_config_filepath : "resources/codecs/elitebook835_h264_amf.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
@@ -83,12 +74,18 @@ producer_specs:
   
   # Stream from the DOTs lower limb tracking.
   - class: "DotsStreamer"
-    device_mapping: 
-      knee_right      : "40195BFC800B01F2"
-      foot_right      : "40195BFC800B003B"
-      pelvis          : "40195BFD80C20052"
-      knee_left       : "40195BFC800B017A"
-      foot_left       : "40195BFD80C200D1"
+    device_mapping:
+      foot_right      : "40195BF3809B009E"
+      knee_right      : "40195C09807000DF"
+      pelvis          : "40195C0980700122"
+      knee_left       : "40195C09807001AE"
+      foot_left       : "40195C0980700109"
+    mac_mapping:
+      knee_right      : "D422CD00AA23"
+      foot_right      : "D422CD00A1D7"
+      pelvis          : "D422CD00A8DF"
+      knee_left       : "D422CD00A922"
+      foot_left       : "D422CD00A8C6"
     master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
     num_joints        : 5
     sampling_rate_hz  : 60 # [1, 4, 10, 12, 15, 20, 30, 60]
@@ -105,8 +102,8 @@ producer_specs:
     is_binocular            : True # uses both eyes for gaze data and for video
     is_stream_video_world   : True
     is_stream_video_eye     : False
-    is_stream_fixation      : False
-    is_stream_blinks        : False
+    is_stream_fixation      : True
+    is_stream_blinks        : True
     shape_video_world:
       - 720
       - 1280
@@ -126,15 +123,14 @@ producer_specs:
   # Stream from one or more cameras.
   - class: "CameraStreamer"
     camera_mapping: # map camera names (usable as device names in the HDF5 file) to capture device indexes
-      basler_north : "40478064"
-      basler_east  : "40549960"
-      basler_south : "40549975"
-      basler_west  : "40549976"
+      n1 : "40478064"
+      n2 : "40549960"
+      n3 : "40549975"
+      n4 : "40549976"
     fps: 30
     resolution:
       - 1440
       - 2560
-    camera_config_filepath: "resources/AidFOG/pylon_30fps_2K_40478064.pfs"
 
   # Moticon insole pressure.
   - class: "InsoleStreamer"
@@ -156,7 +152,7 @@ producer_specs:
     sampling_rate_hz: 20
   
   # Vicon capture system.
-  - class': "ViconStreamer"
+  - class': "CometaStreamer"
     device_mapping:
       gluteus_medius_left         : "1" # left upper glute
       rectus_femoris_left         : "2" # left quad
@@ -167,8 +163,7 @@ producer_specs:
       semitendius_right           : "7" # right hamstring
       medial_gastrocnemius_right  : "8" # right inner calf
     sampling_rate_hz: 2000
-    vicon_ip: "192.168.0.104"
-  
+
   # Dummy producer.
   - class': "DummyStreamer"
     sampling_rate_hz: 1
@@ -203,12 +198,18 @@ consumer_specs: # DataVisualizer and DataLogger are mutually exclusive, select o
         radio_channel     : 15
       
       - class: "DotsStreamer"
-        device_mapping: 
-          knee_right      : "40195BFC800B01F2"
-          foot_right      : "40195BFC800B003B"
-          pelvis          : "40195BFD80C20052"
-          knee_left       : "40195BFC800B017A"
-          foot_left       : "40195BFD80C200D1"
+        device_mapping:
+          foot_right      : "40195BF3809B009E"
+          knee_right      : "40195C09807000DF"
+          pelvis          : "40195C0980700122"
+          knee_left       : "40195C09807001AE"
+          foot_left       : "40195C0980700109"
+        mac_mapping:
+          knee_right      : "D422CD00AA23"
+          foot_right      : "D422CD00A1D7"
+          pelvis          : "D422CD00A8DF"
+          knee_left       : "D422CD00A922"
+          foot_left       : "D422CD00A8C6"
         master_device     : "pelvis" # wireless dot relaying messages, must match a key in the `device_mapping`
         num_joints        : 5
         sampling_rate_hz  : 60
@@ -224,8 +225,8 @@ consumer_specs: # DataVisualizer and DataLogger are mutually exclusive, select o
         is_binocular            : True # uses both eyes for gaze data and for video
         is_stream_video_world   : True
         is_stream_video_eye     : False
-        is_stream_fixation      : False
-        is_stream_blinks        : False
+        is_stream_fixation      : True
+        is_stream_blinks        : True
         shape_video_world: 
           - 720
           - 1280
@@ -244,16 +245,15 @@ consumer_specs: # DataVisualizer and DataLogger are mutually exclusive, select o
       
       - class: "CameraStreamer"
         camera_mapping: # map camera names (usable as device names in the HDF5 file) to capture device indexes
-          basler_north : "40478064"
-          basler_east  : "40549960"
-          basler_south : "40549975"
-          basler_west  : "40549976"
+          n1 : "40478064"
+          n2 : "40549960"
+          n3 : "40549975"
+          n4 : "40549976"
         fps: 30
         resolution:
           - 1440
           - 2560
-        camera_config_filepath: "resources/AidFOG/pylon_30fps_2K_40478064.pfs"
-      
+
       - class: "InsoleStreamer"
         sampling_rate_hz: 100
 
@@ -269,7 +269,7 @@ consumer_specs: # DataVisualizer and DataLogger are mutually exclusive, select o
       - class: "TmsiStreamer"
         sampling_rate_hz: 20
       
-      - class': "ViconStreamer"
+      - class': "CometaStreamer"
         device_mapping:
           gluteus_medius_left         : "1" # left upper glute
           rectus_femoris_left         : "2" # left quad
@@ -280,8 +280,7 @@ consumer_specs: # DataVisualizer and DataLogger are mutually exclusive, select o
           semitendius_right           : "7" # right hamstring
           medial_gastrocnemius_right  : "8" # right inner calf
         sampling_rate_hz: 2000
-        vicon_ip: "192.168.0.104"
-      
+
       - class': "DummyStreamer"
         sampling_rate_hz: 1
     
@@ -298,7 +297,7 @@ consumer_specs: # DataVisualizer and DataLogger are mutually exclusive, select o
       dump_video          : False
       dump_audio          : False
 
-      video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+      video_codec_config_filepath : "resources/codecs/elitebook835_h264_amf.yml" 
       video_codec_num_cpu : 1
 
       audio_format        : "wav" # currently only supports WAV

@@ -26,14 +26,15 @@
 # ############
 
 
-host_ip : "127.0.0.1"
-is_master_broker: True
+host_ip : "192.168.0.200"
+is_master_broker: False
 
-remote_subscriber_ips: []
+remote_subscriber_ips:
+  - "192.168.0.100"
 remote_publisher_ips: []
 
-is_remote_kill: False
-remote_kill_ip: null
+is_remote_kill: True
+remote_kill_ip: "192.168.0.100" # IP of Broker that delegates the primary kill signal (i.e CLI or GUI)
 
 
 logging_spec:
@@ -49,36 +50,36 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_qsv.yml" 
+  video_codec_config_filepath : "resources/codecs/elitebook835_h264_amf.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
 
 
 producer_specs:
-  # Stream from the Moxy sensors
-  # - class: "MoxyStreamer"
-  #   devices: 
-  #     - "8003"
-  #     - "8523"
-  #     - "8004"
-  #     - "8524"
-  #     - "8005"
-  #     - "8525"
-  #   sampling_rate_hz: 0.5
+  - class: "MvnAnalyzeStreamer"
+    mvn_setup           : "full_body"
+    sampling_rate_hz    : 60
+    is_euler            : False
+    is_quaternion       : True
+    is_joint_angles     : True
+    is_linear_segments  : True
+    is_angular_segments : True
+    is_motion_trackers  : True
+    is_com              : True
+    is_time_code        : True
 
-  - class: "AwindaStreamer"
-    device_mapping: 
-      pelvis          : "00B4D3E4"
-      upper_leg_left  : "00B4D3E7"
-      lower_leg_left  : "00B4D3D4"
-      foot_left       : "00B4D3D8"
-      upper_leg_right  : "00B4D3D7"
-      lower_leg_right  : "00B4D3E2"
-      foot_right       : "00B4D3DD"
-
-    num_joints        : 7
-    sampling_rate_hz  : 60
+  - class: "CometaStreamer"
+    device_mapping:
+      gluteus_medius_left         : "1" # left upper glute
+      rectus_femoris_left         : "2" # left quad
+      semitendius_left            : "3" # left hamstring
+      medial_gastrocnemius_left   : "4" # left inner calf
+      gluteus_medius_right        : "5" # right upper glute
+      rectus_femoris_right        : "6" # right quad
+      semitendius_right           : "7" # right hamstring
+      medial_gastrocnemius_right  : "8" # right inner calf
+    sampling_rate_hz: 2000
 
 
 consumer_specs: []

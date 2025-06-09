@@ -25,18 +25,6 @@
 #
 # ############
 
-experiment:
-  - "sample_project"
-  - "site_x"
-  - "subject_x"
-  - "visit_x"
-  - "task_x1"
-
-duration_s    : null
-
-print_status  : True
-print_debug   : True
-
 
 host_ip : "127.0.0.1"
 is_master_broker: True
@@ -61,7 +49,7 @@ logging_spec:
   dump_video          : False
   dump_audio          : False
 
-  video_codec_config_filepath : "resources/codecs/h264_amf.yml" 
+  video_codec_config_filepath : "resources/codecs/backpack_h264_qsv.yml" 
   video_codec_num_cpu : 1
 
   audio_format        : "wav" # currently only supports WAV
@@ -74,11 +62,11 @@ producer_specs:
     pupil_capture_port      : "50020"
     video_image_format      : "jpeg"
     gaze_estimate_stale_s   : 0.2
-    is_binocular            : True # uses both eyes for gaze data and for video
+    is_binocular            : True # uses both eyes for gaze data and for video.
     is_stream_video_world   : True
     is_stream_video_eye     : False
-    is_stream_fixation      : False
-    is_stream_blinks        : False
+    is_stream_fixation      : True
+    is_stream_blinks        : True
     shape_video_world: 
       - 720
       - 1280
@@ -96,7 +84,7 @@ producer_specs:
     fps_video_eye1        : 120.0
 
 
-consumer_specs: [] # DataVisualizer and DataLogger are mutually exclusive, select only one.
+consumer_specs: []
 
 
 pipeline_specs: []
