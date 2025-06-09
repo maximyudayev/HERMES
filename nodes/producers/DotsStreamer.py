@@ -25,10 +25,12 @@
 #
 # ############
 
+from typing import Optional
 from nodes.producers.Producer import Producer
 from streams import DotsStream
 
 from handlers.MovellaDots.MovellaHandler import MOVELLA_PAYLOAD_MODE, MovellaFacade
+from utils.live_gui_utils import LiveGUIPoster
 from utils.zmq_utils import *
 
 import numpy as np
@@ -62,6 +64,8 @@ class DotsStreamer(Producer):
                port_killsig: str = PORT_KILL,
                transmit_delay_sample_period_s: float = float('nan'),
                timesteps_before_solidified: int = 0,
+               gui_ip: Optional[str] = None,
+               gui_port: Optional[str] = None,
                **_):
 
     # Initialize any state that the sensor needs.
@@ -72,6 +76,16 @@ class DotsStreamer(Producer):
     self._is_sync_devices = is_sync_devices
     self._device_mapping = device_mapping
     self._row_id_mapping = OrderedDict([(device_id, row_id) for row_id, device_id in enumerate(self._device_mapping.values())])
+
+    self.GUIposter = None
+    if gui_ip and gui_port:
+      self.GUIposter = LiveGUIPoster(
+        self._log_source_tag(),
+        gui_ip,
+        gui_port,
+        buffer_shape=(num_joints, 3, sampling_rate_hz),
+        buffer_dtype=np.float64
+      )
 
     stream_info = {
       "num_joints": self._num_joints,
@@ -152,6 +166,10 @@ class DotsStreamer(Producer):
 
       tag: str = "%s.data" % self._log_source_tag()
       self._publish(tag, process_time_s=process_time_s, data={'dots-imu': data})
+
+      if self.GUIposter:
+        self.GUIposter.append_to_data_buffer(data)
+
     elif not self._is_continue_capture:
       # If triggered to stop and no more available data, send empty 'END' packet and join.
       self._send_end_packet()

@@ -122,7 +122,7 @@ if __name__ == '__main__':
                       nargs='*',
                       action=ParseExternalGUIKwargs,
                       default=list(),
-                      help='key-value pair tags detailing local pipeline Nodes of the host')
+                      help='key-value pair tags detailing local GUI addresses')
 
   parser.add_argument('--config_file',
                       type=validate_path,

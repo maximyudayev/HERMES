@@ -25,6 +25,7 @@
 #
 # ############
 
+from typing import Optional
 from nodes.producers.Producer import Producer
 from streams import AwindaStream
 
@@ -58,8 +59,8 @@ class AwindaStreamer(Producer):
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
                transmit_delay_sample_period_s: float = float('nan'),
-               gui_ip: str = None,
-               gui_port: str = None,
+               gui_ip: Optional[str] = None,
+               gui_port: Optional[str] = None,
                **_):
 
     self._num_joints = num_joints

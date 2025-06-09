@@ -506,7 +506,7 @@ class Broker(BrokerInterface):
                port_sync_remote: str = PORT_SYNC_REMOTE,
                port_killsig: str = PORT_KILL,
                is_master_broker: bool = False,
-               external_gui_specs: dict = None) -> None:
+               external_gui_specs: dict = dict()) -> None:
 
     # Record various configuration options.
     self._host_ip = host_ip
