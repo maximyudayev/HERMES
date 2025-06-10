@@ -58,7 +58,7 @@ class TmsiStreamer(Producer):
   def __init__(self,
                host_ip: str,
                logging_spec: dict,
-               sampling_rate_hz: int = 20,
+               sampling_rate_hz: int = 2000,
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
@@ -117,7 +117,7 @@ class TmsiStreamer(Producer):
         # oxy goes to digi
         # breath to aux 1
         # gsr aux 2
-        # double bip to bipolar
+        # double bip to bipolar 1
         # 65 66 double bipolar
         # 69 breath
         # 72 gsr
@@ -130,6 +130,14 @@ class TmsiStreamer(Producer):
         # Check the current bandwidth that's in use.
         current_bandwidth = self.device.get_device_bandwidth()
         print('The current bandwidth in use is {:} bit/s'.format(current_bandwidth['in use']), flush=True)
+
+        fs_info= self.device.get_device_sampling_frequency(detailed=True)
+        print('The current base-sample-rate is {0} Hz.'.format(fs_info['base_sampling_rate']))
+
+        self.device.set_device_sampling_config(base_sample_rate = SagaBaseSampleRate.Decimal) # sampling at 4000
+
+        fs_info= self.device.get_device_sampling_frequency(detailed=True)
+        print('\n\nThe updated base-sample-rate is {0} Hz.'.format(fs_info['base_sampling_rate']))
 
         # Choose the desired DR-DS interface type.
         self.device.set_device_interface(DeviceInterfaceType.wifi)

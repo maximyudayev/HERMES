@@ -144,15 +144,14 @@ class ViconStreamer(Producer):
           samples.append(values)
         sample_block = np.array(samples)
 
-        
         tag: str = "%s.data" % self._log_source_tag()
         for block in sample_block.T:
-            data = {
-              'emg': block.reshape(-1),
-              'counter': frame_number,
-              'latency': 0.0, # TODO: get latency measurement from Vicon?
-            }
-            self._publish(tag=tag, process_time_s=process_time_s, data={'vicon-data': data})
+          data = {
+            'emg': block.reshape(-1),
+            'counter': frame_number,
+            'latency': 0.0, # TODO: get latency measurement from Vicon?
+          }
+          self._publish(tag=tag, process_time_s=process_time_s, data={'vicon-data': data})
     except ViconDataStream.DataStreamException as e:
       print(e)
     finally:
