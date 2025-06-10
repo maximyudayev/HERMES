@@ -296,6 +296,22 @@
       "console": "integratedTerminal",
       "subProcess": true,
       "justMyCode": false
+    },{
+      "name": "RevalExo Backpack",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "main.py",
+      "args": [
+        "--experiment", "project=RevalExo", "site=Jette", "subject=0", "visit=0", "task=0", "trial=0",
+        "--config_file", "configs/RevalExo/backpack.yml"
+      ],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal",
+      "subProcess": true,
+      "justMyCode": false
     },
   ]
 }
