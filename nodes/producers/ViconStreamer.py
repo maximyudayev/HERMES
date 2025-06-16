@@ -27,7 +27,7 @@
 
 from nodes.producers.Producer import Producer
 from streams import ViconStream
-from vicon_dssdk import ViconDataStream
+from resources.RevalExo.vicon_dssdk import ViconDataStream
 from utils.print_utils import *
 from utils.zmq_utils import *
 import time
@@ -118,7 +118,7 @@ class ViconStreamer(Producer):
     # Keep only EMG. This device was renamed in the Nexus SDK.
     # NOTE: When using analog connector and setting all channels as single device, 
     #       _devices contains just 1 device.
-    self._devices = [d for d in devices if d[0] == "Cometa EMG"]
+    self._devices = [d for d in devices if d[0] == "RE EMG"]
     return True
 
 

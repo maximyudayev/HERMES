@@ -29,8 +29,40 @@ logging_spec:
 
 producer_specs:
   - class: "TmsiStreamer"
-   
+  - class: "MvnAnalyzeStreamer"
+    mvn_setup           : "lower_body"
+    sampling_rate_hz    : 60
+    is_euler            : False
+    is_quaternion       : True
+    is_joint_angles     : True
+    is_linear_segments  : True
+    is_angular_segments : True
+    is_motion_trackers  : True
+    is_com              : True
+    is_time_code        : True
+  - class: "ViconStreamer"
+    device_mapping: 
+      0 : 0
+      1 : 1
+      2 : 2
+      3 : 3
+      4 : 4
+      5 : 5
+      6 : 6
+      7 : 7
+      8 : 8
+      9 : 9
+      10 : 10
+      11 : 11
+      12 : 12
+      13 : 13
+      14 : 14
+      15 : 15
 
 consumer_specs: []
 
 pipeline_specs: []
+
+external_gui_specs:
+  gui_ip: "169.254.243.95" # TODO set this dynamically with GUI discovery process
+  gui_port: "51569"

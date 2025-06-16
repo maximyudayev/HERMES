@@ -297,5 +297,22 @@
       "subProcess": true,
       "justMyCode": false
     },
+    {
+      "name": "Local VICON PC with external GUI",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "main.py",
+      "args": [
+        "--experiment", "project=RevalExo", "site=Jette", "subject=1", "visit=1", "trial=1",
+        "--config_file", "configs/RevalExo/vicon.yml"
+      ],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal",
+      "subProcess": true,
+      "justMyCode": false
+    }
   ]
 }

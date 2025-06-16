@@ -40,7 +40,10 @@ class LiveGUIPoster:
         for i in range(self._data_buffer.shape[0]):
             samples = self._data_buffer[i]   
             payload = f"sensor||{self.tag}-{i+1}||{self._data_buffer_counter}||".encode() + samples.tobytes()
-            self.GUIsocket.sendto(payload, (self.ip_gui, self.port_gui))
+            try:
+                self.GUIsocket.sendto(payload, (self.ip_gui, self.port_gui))
+            except OSError as e:
+                return
         
     def flush_data_buffer(self) -> None:
         # reset valid data index to 0

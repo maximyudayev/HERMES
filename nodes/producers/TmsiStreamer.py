@@ -25,6 +25,7 @@
 #
 # ############
 
+from typing import Optional
 from handlers.Tmsi.device.tmsi_device import TMSiDevice
 from handlers.Tmsi.sample_data_server.sample_data import SampleData
 from nodes.producers.Producer import Producer
@@ -38,6 +39,7 @@ from handlers.Tmsi.device.devices.saga.saga_API_enums import SagaBaseSampleRate
 from handlers.Tmsi.device.tmsi_channel import ChannelType
 
 import queue
+from utils.live_gui_utils import LiveGUIPoster
 from utils.print_utils import *
 from utils.zmq_utils import *
 from utils.time_utils import get_time
@@ -58,16 +60,30 @@ class TmsiStreamer(Producer):
   def __init__(self,
                host_ip: str,
                logging_spec: dict,
-               sampling_rate_hz: int = 20,
+               sampling_rate_hz: int = 4000,
                port_pub: str = PORT_BACKEND,
                port_sync: str = PORT_SYNC_HOST,
                port_killsig: str = PORT_KILL,
                transmit_delay_sample_period_s: float = float('nan'),
+               gui_ip: Optional[str] = None,
+               gui_port: Optional[str] = None,
                **_)-> None:
     
     stream_info = {
       "sampling_rate_hz": sampling_rate_hz
     }
+
+    num_signals = 3
+    self.gui_downsample = 40
+    self.GUIposter = None
+    if gui_ip and gui_port:
+      self.GUIposter = LiveGUIPoster(
+        self._log_source_tag(),
+        gui_ip,
+        gui_port,
+        buffer_shape=(num_signals, 1, sampling_rate_hz//self.gui_downsample),
+        buffer_dtype=np.float64
+      )
 
     super().__init__(host_ip=host_ip,
                      stream_info=stream_info,
@@ -108,10 +124,7 @@ class TmsiStreamer(Producer):
         print('The current bandwidth in use is {:} bit/s'.format(current_bandwidth['in use']), flush=True)
         print('Maximum bandwidth for wifi measurements is {:} bit/s'.format(current_bandwidth['wifi']), flush=True)
 
-        # Maximal allowable sample rate with all enabled channels is 1000Hz.
-        self.device.set_device_sampling_config(base_sample_rate=SagaBaseSampleRate.Decimal,
-                                               channel_type=ChannelType.all_types,
-                                               channel_divider=4)
+        
         # NOTE: must match the hardcoded specs else wrong sensors will be read out.
         # channels
         # oxy goes to digi
@@ -123,9 +136,14 @@ class TmsiStreamer(Producer):
         # 72 gsr
         # 78 blood oxy
         # 79, 80, 81, 82, 83, 84, 85, 86 -> sensors
-        activated_channels = [65, 66, 69, 72, 78, 79, 80, 81, 82, 83, 84, 85, 86]
+        activated_channels = [65, 69, 72, 86]
         self.device.set_device_active_channels(list(range(90)), False)
         self.device.set_device_active_channels(activated_channels, True)
+
+        # Maximal allowable sample rate with all enabled channels is 1000Hz.
+        self.device.set_device_sampling_config(base_sample_rate=SagaBaseSampleRate.Decimal,
+                                               channel_type=ChannelType.all_types,
+                                               channel_divider=4)
 
         # Check the current bandwidth that's in use.
         current_bandwidth = self.device.get_device_bandwidth()
@@ -184,27 +202,50 @@ class TmsiStreamer(Producer):
       process_time_s = get_time()
       sample_block = np.array(array_to_matrix(new_data.samples, new_data.num_samples_per_sample_set))
       tag: str = "%s.data" % self._log_source_tag()
+      # for sample in sample_block.T:
+      data = {
+        'BIP-01': sample_block[0].reshape(-1, 1),
+        # 'BIP-02': sample_block[1].reshape(-1, 1),
+        'breath': sample_block[2].reshape(-1, 1),
+        'GSR': sample_block[3].reshape(-1, 1),
+        # 'SPO2': sample[4],
+        'counter': sample_block[-1].reshape(-1, 1),
+      }
+      self._publish(tag=tag, process_time_s=process_time_s, data={'tmsi-data': data})
       for sample in sample_block.T:
-        data = {
-          'BIP-01': sample[0],
-          'BIP-02': sample[1],
-          'breath': sample[2],
-          'GSR': sample[3],
-          'SPO2': sample[4],
-          'counter': sample[-1],
-        }
-        self._publish(tag=tag, process_time_s=process_time_s, data={'tmsi-data': data})
+        if self.GUIposter and sample[-1] % self.gui_downsample == 0:
+          self.GUIposter.append_to_data_buffer(np.array([sample[0], sample[2], sample[3]]).reshape(-1, 1))
+
     except queue.Empty:
       if not self._is_continue_capture:
         self._send_end_packet()
 
 
   def _stop_new_data(self):
-    self.device.stop_measurement()
+    device_stopped = False
+    while not device_stopped:
+      try:
+        self.device.stop_measurement()
+        device_stopped = True
+      except Exception as e:
+        print(f"Error when stopping SAGA device {e}")
 
 
   def _cleanup(self) -> None:
     # Set the DR-DS interface type back to docked
-    self.device.set_device_interface(DeviceInterfaceType.docked)
-    self.device.close()
+    device_docked = False
+    while not device_docked:
+      try:
+        self.device.set_device_interface(DeviceInterfaceType.docked)
+        device_docked = True
+      except Exception as e:
+        print(f"Unhandled exception: {e}, please try docking the SAGA") # TODO this can raise TMSI error because the device is not on the dock when setting interface
+        time.sleep(1)
+    device_closed = False
+    while not device_closed:
+      try:
+        self.device.close()
+        device_closed = True
+      except Exception as e:
+        print(f"Unhandled exception when closing device: {e}")
     super()._cleanup()

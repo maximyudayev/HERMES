@@ -185,7 +185,7 @@ if __name__ == '__main__':
   log_history_filepath: str = os.path.join(log_dir, '%s.log'%args.host_ip)
 
   try:
-    os.makedirs(log_dir, exist_ok=True) # TODO remove exists ok in future for safety reasons
+    os.makedirs(log_dir, exist_ok=False) # TODO remove exists ok in future for safety reasons
   except OSError:
     exit("'%s' already exists. Update experiment YML file with correct data for this subject."%log_dir)
 
