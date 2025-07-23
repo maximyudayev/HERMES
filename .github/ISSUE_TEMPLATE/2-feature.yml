@@ -1,7 +1,7 @@
 name: "\U0001F4A1 Feature Request"
 description: Let us know what extra functionality you need
 title: "[FEAT]: <catchy title>"
-labels: ["enhancement"]
+labels: ["feature"]
 assignees:
   - maximyudayev
 body:
@@ -27,7 +27,7 @@ body:
   - type: dropdown
     id: type
     attributes:
-      label: Enhancement type
+      label: Feature type
       description: Which category best describes your proposal?
       multiple: false
       options:

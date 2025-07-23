@@ -1,7 +1,7 @@
 name: "\U0001F41B Bug"
 description: Report an issue when running the system
 title: "[BUG]: <catchy title>"
-labels: ["bug", "needs triage"]
+labels: ["bug"]
 assignees:
   - maximyudayev
 body:
