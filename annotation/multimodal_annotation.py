@@ -49,7 +49,10 @@ CAMERA_CONFIGS = [
   {'video_file': 'cameras_40549976.mkv', 'unique_id': '40549976', 'is_reference': False}
 ]
 
+PROJECT = "RevalExo" # AidWear or AidFOG or RevalExo
+
 # Annotation options (label dropdown and values to save in HDF5)
+# TODO: Make this configurable for different projects, also modify for RevalExo
 ANNOTATION_OPTIONS = [
   {"label": "1. High-step", "value": "High-step"},
   {"label": "2. Ladder", "value": "Ladder"},
@@ -66,7 +69,8 @@ ANNOTATION_OPTIONS = [
 ]
 
 # File paths, expected that other hdf5 files are in this directory, change if not the case
-BASE_PATH = 'data/subject_example'
+# TODO: Fix EMG and add other sensors/components for RevalExo (Need burst handling logic for TMSi)
+BASE_PATH = 'data/20250623_P20'
 cameras_hdf5_path = Path(f'{BASE_PATH}/cameras.hdf5')
 eye_video_path = Path(f'{BASE_PATH}/eye_eye-video-world.mkv')
 eye_hdf5_path = Path(f'{BASE_PATH}/eye.hdf5')
@@ -229,6 +233,7 @@ if __name__ == '__main__':
         timestamp_path='/mvn-analyze/xsens-time/timestamp_s',
         unique_id='skeleton_mvn',
         legend_name='Skeleton',
+        project=PROJECT,
         col_width=3)
     except Exception as e:
       print(f"Warning: Failed to load skeleton data: {e}")
@@ -245,6 +250,7 @@ if __name__ == '__main__':
         sensor_type='accelerometer',
         plot_window_seconds=1,
         sampling_rate=60.0,
+        project=PROJECT,
         col_width=4)
 
       imu_gyro_component = IMUComponent(
@@ -256,6 +262,7 @@ if __name__ == '__main__':
         sensor_type='gyroscope',
         plot_window_seconds=1,
         sampling_rate=60.0,
+        project=PROJECT,
         col_width=4)
 
       imu_mag_component = IMUComponent(
@@ -267,6 +274,7 @@ if __name__ == '__main__':
         sensor_type='magnetometer',
         plot_window_seconds=1,
         sampling_rate=60.0,
+        project=PROJECT,
         col_width=4)
     except Exception as e:
       print(f"Warning: Failed to load IMU data: {e}")
@@ -422,10 +430,10 @@ if __name__ == '__main__':
   if any([eye_camera, emg_component, skeleton_component, insole_component]):
     data_viz_rows.append(
       dbc.Row([
-        eye_camera.layout if eye_camera else html.Div(),
-        emg_component.layout if emg_component else html.Div(),
-        skeleton_component.layout if skeleton_component else html.Div(),
-        insole_component.layout if insole_component else html.Div()
+        eye_camera.layout if eye_camera else dbc.Col(width=3),
+        emg_component.layout if emg_component else dbc.Col(width=3),
+        skeleton_component.layout if skeleton_component else dbc.Col(width=3),
+        insole_component.layout if insole_component else dbc.Col(width=3)
       ], className="mb-3")
     )
 

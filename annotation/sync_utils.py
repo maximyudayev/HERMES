@@ -27,8 +27,32 @@
 
 from components import * 
 import numpy as np
-from typing import List, Mapping
+from typing import List, Mapping, Tuple
 
+# Function to check the overlapping window for all the components, used for RevalExo for example to trim out the initial frames from video that starts way earlier than other components 
+def find_overlap_window(all_sync_infos: List[dict]) -> Tuple[float, float]:
+  """Find the time window where all components have data."""
+  start_times = []
+  end_times = []
+  
+  for info in all_sync_infos:
+    if 'timestamps' in info and len(info['timestamps']) > 0:
+      start_times.append(float(info['timestamps'][0]))
+      end_times.append(float(info['timestamps'][-1]))
+    elif 'toa_s' in info and len(info['toa_s']) > 0:
+      start_times.append(float(info['toa_s'][0]))
+      end_times.append(float(info['toa_s'][-1]))
+  
+  if not start_times or not end_times:
+    raise ValueError("No valid timestamp data found in components")
+  
+  overlap_start = max(start_times)
+  overlap_end = min(end_times)
+  
+  if overlap_start >= overlap_end:
+    raise ValueError("No time overlap between all components")
+  
+  return overlap_start, overlap_end
 
 def calculate_truncation_points(
   camera_components: List[VideoComponent],
@@ -94,15 +118,45 @@ def calculate_truncation_points(
   if imu_components:
     imu_infos = [imu.get_sync_info() for imu in imu_components]
 
+  all_sync_infos = []
+  all_sync_infos.extend(camera_infos)
+  if eye_info:
+    all_sync_infos.append(eye_info)
+  all_sync_infos.extend(emg_infos)
+  all_sync_infos.extend(skeleton_infos)
+  all_sync_infos.extend(insole_infos)
+  all_sync_infos.extend(imu_infos)
+
+  # Find overlap window
+  overlap_start, overlap_end = find_overlap_window(all_sync_infos)
+  overlap_duration = overlap_end - overlap_start
+  print(f"Data overlap window: {overlap_start} - {overlap_end} (duration: {overlap_duration}s)")
+
   # Get the timestamp at the baseline frame for reference camera
   ref_cam_info = next(info for info in camera_infos if info['unique_id'] == reference_camera._unique_id)
   ref_timestamps = ref_cam_info['toa_s'] # Using toa_s from reference camera as the baseline sync timestamp to synchronize all other components
 
-  if baseline_frame >= len(ref_timestamps):
-    print(f"Warning: baseline_frame {baseline_frame} exceeds reference camera length {len(ref_timestamps)}")
-    baseline_frame = min(baseline_frame, len(ref_timestamps) - 1)
+  # CHANGED THE FOLLOWING TO USE THE OVERLAP WINDOW INSTEAD OF THE FULL VIDEO LENGTH FROM BEFORE
+  # Find the first frame in reference camera that's within the overlap window
+  ref_start_idx = 0
+  for i, ts in enumerate(ref_timestamps):
+    if float(ts) >= overlap_start:
+      ref_start_idx = i
+      break
+  
+  # Find the last frame in reference camera that's within the overlap window
+  ref_end_idx = len(ref_timestamps) - 1
+  for i in range(len(ref_timestamps) - 1, -1, -1):
+    if float(ref_timestamps[i]) <= overlap_end:
+      ref_end_idx = i
+      break
+  
+  # Add baseline_frame offset from the start of overlap
+  sync_frame = ref_start_idx + baseline_frame
+  if sync_frame > ref_end_idx:
+    sync_frame = ref_end_idx
 
-  baseline_timestamp = ref_timestamps[baseline_frame]
+  baseline_timestamp = ref_timestamps[sync_frame]
   print(f"\nSynchronization using reference camera ({reference_camera._unique_id}) frame {baseline_frame} as baseline")
   print(f"Reference camera baseline timestamp: {baseline_timestamp}")
 
@@ -206,12 +260,18 @@ def calculate_truncation_points(
 
   # Set truncation points for cameras
   for cam in camera_components:
-    sync_info = camera_sync_frames[cam._unique_id]
-    start_frame = sync_info['sync_frame']
-    # End frame is the last frame of the video
-    cam_info = next(info for info in camera_infos if info['unique_id'] == cam._unique_id)
-    end_frame = len(cam_info['toa_s']) - 1
-    truncation_points[str(cam._unique_id)] = (start_frame, end_frame)
+      sync_info = camera_sync_frames[cam._unique_id]
+      if cam._unique_id == reference_camera._unique_id:
+          # Reference camera starts at overlap window start
+          start_frame = ref_start_idx
+          end_frame = ref_end_idx
+      else:
+          # Other cameras use their sync frame
+          start_frame = sync_info['sync_frame']
+          cam_info = next(info for info in camera_infos if info['unique_id'] == cam._unique_id)
+          end_frame = len(cam_info['toa_s']) - 1
+      
+      truncation_points[str(cam._unique_id)] = (start_frame, end_frame)
 
   # Set truncation points for EMG components
   for emg in (emg_components or []):

@@ -45,6 +45,7 @@ class IMUComponent(BaseComponent):
                sensor_type: str,  # 'accelerometer', 'gyroscope', or 'magnetometer'
                plot_window_seconds: float = 1.0,
                sampling_rate: float = 60.0,
+               project="AidWear",
                col_width: int = 3):
     super().__init__(unique_id=unique_id, col_width=col_width)
 
@@ -56,11 +57,19 @@ class IMUComponent(BaseComponent):
     self._plot_window_seconds = plot_window_seconds
     self._sampling_rate = sampling_rate
 
-    # Joint names corresponding to the 17 sensors (taken from the description from the HDF5 file)
-    self._joint_names = ['Pelvis', 'T8', 'Head', 'Right Shoulder', 'Right Upper Arm', 
-                        'Right Forearm', 'Right Hand', 'Left Shoulder', 'Left Upper Arm', 
-                        'Left Forearm', 'Left Hand', 'Right Upper Leg', 'Right Lower Leg', 
-                        'Right Foot', 'Left Upper Leg', 'Left Lower Leg', 'Left Foot']
+    # Joint names corresponding to the 17 sensors for AidWear and 7 for RevalExo (taken from the description from the HDF5 file)
+    if project == "AidWear":
+        self._joint_names = ['Pelvis', 'T8', 'Head', 'Right Shoulder', 'Right Upper Arm', 
+                            'Right Forearm', 'Right Hand', 'Left Shoulder', 'Left Upper Arm', 
+                            'Left Forearm', 'Left Hand', 'Right Upper Leg', 'Right Lower Leg', 
+                            'Right Foot', 'Left Upper Leg', 'Left Lower Leg', 'Left Foot']
+        self._expected_joints = 17
+    elif project == "RevalExo":
+        self._joint_names = ['Pelvis', 'Right Upper Leg', 'Right Lower Leg', 
+                            'Right Foot', 'Left Upper Leg', 'Left Lower Leg', 'Left Foot']
+        self._expected_joints = 7
+    else:
+        raise ValueError(f"Unknown project: {project}")
 
     # Set units based on sensor type
     if sensor_type == 'accelerometer':
@@ -142,8 +151,8 @@ class IMUComponent(BaseComponent):
       if self._data_path in hdf5:
         self._data = hdf5[self._data_path][:]
         # Expected shape: (num_timestamps, 17 joints, 3 axes) - TODO: NUM_JOINTS FLEXIBLE FOR REVALEXO
-        if len(self._data.shape) != 3 or self._data.shape[1] != 17 or self._data.shape[2] != 3:
-          raise ValueError(f"Expected IMU data shape (timestamps, 17, 3), got {self._data.shape}")
+        if len(self._data.shape) != 3 or self._data.shape[1] != self._expected_joints or self._data.shape[2] != 3:
+          raise ValueError(f"Expected IMU data shape (timestamps, {self._expected_joints}, 3), got {self._data.shape}")
 
         # Verify data and timestamp lengths match
         if len(self._data) != len(self._timestamps):

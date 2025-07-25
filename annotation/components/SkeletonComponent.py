@@ -41,6 +41,7 @@ class SkeletonComponent(BaseComponent):
                timestamp_path: str,
                unique_id: str,
                legend_name: str,
+               project="AidWear",
                col_width: int = 3):
     super().__init__(unique_id=unique_id, col_width=col_width)
 
@@ -50,30 +51,48 @@ class SkeletonComponent(BaseComponent):
     self._legend_name = legend_name
 
     # Segment names and indices (BASED ON THE HDF5 FILE DESCRIPTION)
-    self._segment_names = [
-      'Pelvis', 'L5', 'L3', 'T12', 'T8', 'Neck', 'Head', 
-      'Right Shoulder', 'Right Upper Arm', 'Right Forearm', 'Right Hand',
-      'Left Shoulder', 'Left Upper Arm', 'Left Forearm', 'Left Hand',
-      'Right Upper Leg', 'Right Lower Leg', 'Right Foot', 'Right Toe',
-      'Left Upper Leg', 'Left Lower Leg', 'Left Foot', 'Left Toe']
+    if project == "AidWear":
+        self._segment_names = [
+            'Pelvis', 'L5', 'L3', 'T12', 'T8', 'Neck', 'Head', 
+            'Right Shoulder', 'Right Upper Arm', 'Right Forearm', 'Right Hand',
+            'Left Shoulder', 'Left Upper Arm', 'Left Forearm', 'Left Hand',
+            'Right Upper Leg', 'Right Lower Leg', 'Right Foot', 'Right Toe',
+            'Left Upper Leg', 'Left Lower Leg', 'Left Foot', 'Left Toe']
 
-    # Define skeletal connections
-    self._connections = [
-      # Spine
-      ('Pelvis', 'L5'), ('L5', 'L3'), ('L3', 'T12'), ('T12', 'T8'), ('T8', 'Neck'), ('Neck', 'Head'),
-      # Right arm
-      ('Neck', 'Right Shoulder'), ('Right Shoulder', 'Right Upper Arm'), 
-      ('Right Upper Arm', 'Right Forearm'), ('Right Forearm', 'Right Hand'),
-      # Left arm
-      ('Neck', 'Left Shoulder'), ('Left Shoulder', 'Left Upper Arm'),
-      ('Left Upper Arm', 'Left Forearm'), ('Left Forearm', 'Left Hand'),
-      # Right leg
-      ('Pelvis', 'Right Upper Leg'), ('Right Upper Leg', 'Right Lower Leg'),
-      ('Right Lower Leg', 'Right Foot'), ('Right Foot', 'Right Toe'),
-      # Left leg
-      ('Pelvis', 'Left Upper Leg'), ('Left Upper Leg', 'Left Lower Leg'),
-      ('Left Lower Leg', 'Left Foot'), ('Left Foot', 'Left Toe')
-    ]
+        self._connections = [
+            # Spine
+            ('Pelvis', 'L5'), ('L5', 'L3'), ('L3', 'T12'), ('T12', 'T8'), ('T8', 'Neck'), ('Neck', 'Head'),
+            # Right arm
+            ('Neck', 'Right Shoulder'), ('Right Shoulder', 'Right Upper Arm'), 
+            ('Right Upper Arm', 'Right Forearm'), ('Right Forearm', 'Right Hand'),
+            # Left arm
+            ('Neck', 'Left Shoulder'), ('Left Shoulder', 'Left Upper Arm'),
+            ('Left Upper Arm', 'Left Forearm'), ('Left Forearm', 'Left Hand'),
+            # Right leg
+            ('Pelvis', 'Right Upper Leg'), ('Right Upper Leg', 'Right Lower Leg'),
+            ('Right Lower Leg', 'Right Foot'), ('Right Foot', 'Right Toe'),
+            # Left leg
+            ('Pelvis', 'Left Upper Leg'), ('Left Upper Leg', 'Left Lower Leg'),
+            ('Left Lower Leg', 'Left Foot'), ('Left Foot', 'Left Toe')
+        ]
+    elif project == "RevalExo":
+        self._segment_names = [
+            'Pelvis', 'L5', 'L3', 'Right Upper Leg', 'Right Lower Leg', 
+            'Right Foot', 'Right Toe', 'Left Upper Leg', 'Left Lower Leg', 
+            'Left Foot', 'Left Toe']
+
+        self._connections = [
+            # Spine (limited)
+            ('Pelvis', 'L5'), ('L5', 'L3'),
+            # Right leg
+            ('Pelvis', 'Right Upper Leg'), ('Right Upper Leg', 'Right Lower Leg'),
+            ('Right Lower Leg', 'Right Foot'), ('Right Foot', 'Right Toe'),
+            # Left leg
+            ('Pelvis', 'Left Upper Leg'), ('Left Upper Leg', 'Left Lower Leg'),
+            ('Left Lower Leg', 'Left Foot'), ('Left Foot', 'Left Toe')
+        ]
+    else:
+        raise ValueError(f"Unknown project: {project}")
 
     # Read data
     self._read_data()
