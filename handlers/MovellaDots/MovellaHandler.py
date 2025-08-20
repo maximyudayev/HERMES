@@ -35,6 +35,7 @@ from handlers.MovellaDots.MovellaConstants import MOVELLA_LOGGING_MODE, MOVELLA_
 from utils.datastructures import TimestampAlignedFifoBuffer #type: ignore
 from utils.user_settings import *
 from utils.time_utils import get_time
+from utils.dots_collector_utils import *
 
 from bleak import BleakScanner, BleakClient # type: ignore
 from movella_dot_py.core.sensor import MovellaDOTSensor # type: ignore
@@ -42,7 +43,7 @@ from movella_dot_py.models.data_structures import SensorConfiguration # type: ig
 from movella_dot_py.models.enums import OutputRate, FilterProfile, PayloadMode # type: ignore
 import asyncio
 import time
-
+import types
 
 class DotDataCallback(mdda.XsDotCallback): # type: ignore
   def __init__(self,
@@ -123,9 +124,9 @@ class MovellaFacade:
       self._loop_thread = threading.Thread(target=self._loop.run_forever, daemon=True)
       self._loop_thread.start()
 
-  def _run(self, coro):
-    fut = asyncio.run_coroutine_threadsafe(coro, self._loop) #type: ignore
-    return fut.result()
+  def _run(self, coroutine):
+    future = asyncio.run_coroutine_threadsafe(coroutine, self._loop) #type: ignore
+    return future.result()
 
   def initialize(self) -> bool:
     cfg = SensorConfiguration(
@@ -135,7 +136,6 @@ class MovellaFacade:
     self._cfg = cfg
     self._ensure_loop()
 
-    self._ensure_loop()
     device_id_by_joint = self._device_id_by_joint
 
     devices = self._run(BleakScanner.discover(timeout=5.0))
@@ -145,27 +145,23 @@ class MovellaFacade:
       if mac_no_colon in self._mac_mapping.keys():
         self._discovered_devices[mac_no_colon] = d
         print(f"discovered {self._mac_mapping[mac_no_colon]}", flush=True)
-      else:
-        print(f"discovered {address}", flush=True)
 
     # Require that all configured devices are discovered
     if all(self._discovered_devices.values()):
       self._is_all_discovered_queue.put(True)
     else:
       missing = [mac for mac, dev in self._discovered_devices.items() if dev is None]
-      print(f"Missing configured devices: {missing}", flush=True)
+      print(f"Missing: {missing}", flush=True)
       return False
 
     for mac_no_colon, bleak_dev in self._discovered_devices.items():
       joint = self._mac_mapping.get(mac_no_colon) 
-      if joint is None:
-        # skip not configured devices
-        continue
 
-      device_id = device_id_by_joint.get(joint) 
+      device_id = device_id_by_joint.get(joint) #type: ignore
       if device_id is None:
         print(f"no device_id for joint '{joint}'", flush=True)
         continue
+
       try:
         sensor = MovellaDOTSensor(cfg)
         sensor.client = BleakClient(bleak_dev.address)
@@ -182,6 +178,8 @@ class MovellaFacade:
         self._last_idx[device_id] = 0
 
         print(f"connected to {mac_no_colon}: {device_id}", flush=True)
+        sensor.data_collector = DotsCollector(sensor.data_collector)
+        sensor.get_collected_data = types.MethodType(lambda self: self.data_collector.get_collected_data(), sensor)
       except Exception as e:
         print(f"failed to connect/configure {bleak_dev.address.upper()}: {e}", flush=True)
         self._connected_devices[device_id] = None
@@ -192,50 +190,32 @@ class MovellaFacade:
     
     if not self._stream():
       return False
+    
     def _collector_packets():
-      field_map = {
-        "accelerations" : "acceleration",
-        "angular_velocity" : "gyroscope",
-        "magnetic_field" : "magnetometer"}
-      
+      data_keys = ("acceleration", "gyroscope", "magnetometer")
       while True:
         # no packets until keep_data() is called
-        if not self._is_keep_data:
-          time.sleep(0.02)
-          continue
+        if self._is_keep_data:
+          for device_id, sensor in list(self._sensors.items()):
+            packet = sensor.get_collected_data()
+            ts = packet.get("timestamps") if packet else None
+            if ts is not None or ts.size > 0: #type: ignore
+              start = self._last_idx.get(device_id, 0)
+              end = int(ts.shape[0]) #type: ignore
+              for i in range(start, end):
+                ts_i = ts[i] #type: ignore
+                data = {
+                  "device_id": device_id,
+                  "timestamp": ts_i,  
+                  "toa_s": get_time(),   
+                }
+                for key in data_keys:
+                  col = packet.get(key)
+                  if col is not None and i < col.shape[0]:
+                    data[key] = col[i]
+                self._packet_queue.put({"key": device_id, "data": data, "timestamp": ts_i})
 
-        for device_id, sensor in list(self._sensors.items()):
-          if sensor is None:
-            continue
-          sample = sensor.get_collected_data()
-          if not sample:
-            continue
-
-          ts = sample.get("timestamps")
-          if ts is None or ts.size == 0:
-              continue
-
-          start = self._last_idx.get(device_id, 0)
-          end = int(ts.shape[0])
-          if end <= start:
-            continue
-
-          cols = {dst: sample.get(src) for src, dst in field_map.items()}
-          for i in range(start, end):
-            ts_i = int(ts[i])
-            data = {
-              "device_id": device_id,
-              "timestamp": ts_i,  
-              "toa_s": get_time(),   
-            }
-            for dst_key, col in cols.items():
-              if col is not None and i < col.shape[0]:
-                data[dst_key] = col[i]
-            self._packet_queue.put({"key": device_id, "data": data, "timestamp": ts_i})
-
-          self._last_idx[device_id] = end
-
-          time.sleep(0.02)
+              self._last_idx[device_id] = end
 
     self._collector_thread = threading.Thread(target=_collector_packets, daemon=True)
     self._collector_thread.start()
@@ -254,9 +234,8 @@ class MovellaFacade:
     return True
   
   def _stream(self) -> bool:
-    ordered_device_list = [*[(dev_id, s) for dev_id, s in self._connected_devices.items()
-                              if dev_id != self._master_device_id],
-                           (self._master_device_id, self._connected_devices[self._master_device_id])]
+    ordered_device_list = [*[(dev_id, s) for dev_id, s in self._connected_devices.items()if dev_id != self._master_device_id],
+                          (self._master_device_id, self._connected_devices[self._master_device_id])]
     for (dev_id, sensor) in ordered_device_list:
       if sensor is None:
         continue
@@ -270,31 +249,58 @@ class MovellaFacade:
 
   def keep_data(self) -> None:
     self._is_keep_data = True
-    for dev_id, sensor in self._sensors.items():
-      sample = sensor.get_collected_data() or {}
-      ts = sample.get("timestamps")
-      self._last_idx[dev_id] = int(ts.shape[0]) if ts is not None else 0
+    # for dev_id, sensor in self._sensors.items():
+    #   sample = sensor.get_collected_data() or {}
+    #   ts = sample.get("timestamps")
+    #   self._last_idx[dev_id] = int(ts.shape[0]) if ts is not None else 0
 
 
   def get_snapshot(self) -> dict[str, dict | None] | None:
     return self._buffer.yeet()
 
 
-  # TODO: adapt cleanup and close functions to new dots reader
   def cleanup(self) -> None:
-    for device_id, device in self._connected_devices.items():
-      if device is not None:
-        if not device.stopMeasurement():
-          print("Failed to stop measurement.", flush=True)
-        if self._is_enable_logging and not device.disableLogging():
-          print("Failed to disable logging.", flush=True)
-        self._connected_devices[device_id] = None
+    for device_id, sensor in self._connected_devices.items():
+      if sensor is None:
+        continue
+      try:
+        self._run(sensor.stop_measurement())
+      except Exception:
+        print("Failed to stop measurement.", flush=True)
+      try:
+          self._run(sensor.disconnect())
+      except Exception:
+        print(f"Failed to disconnect {device_id}.", flush=True)
+      self._connected_devices[device_id] = None
+
     self._is_more = False
+    self._is_keep_data = False
     self._discovered_devices = OrderedDict([(v, None) for v in self._mac_mapping.keys()])
-    # if self._is_sync_devices:
-    #   self._manager.stopSync()
 
 
   def close(self) -> None:
-    # self._manager.close()
-    self._packet_funneling_thread.join()
+    try:
+      if hasattr(self, "_collector_thread") and self._collector_thread:
+        self._collector_thread.join(timeout=2.0)
+    except Exception:
+      pass
+    try:
+      if hasattr(self, "_packet_funneling_thread") and self._packet_funneling_thread:
+        self._packet_funneling_thread.join(timeout=2.0)
+    except Exception:
+      pass
+
+    loop = getattr(self, "_loop", None)
+    if loop is not None:
+      try:
+        loop.call_soon_threadsafe(loop.stop)
+      except Exception:
+          pass
+      t = getattr(self, "_loop_thread", None)
+      if t is not None:
+        try:
+          t.join(timeout=2.0)
+        except Exception:
+          pass
+      self._loop = None
+      self._loop_thread = None

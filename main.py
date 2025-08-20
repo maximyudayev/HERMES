@@ -140,11 +140,10 @@ if __name__ == '__main__':
   args = parser.parse_args()
   # Create a GUI to ask for user input about the experiment information and file naming
   user_input_gui = ExperimentGUI(args)
-  args = user_input_gui.get_experiment_inputs()
-
+  user_args = user_input_gui.get_experiment_inputs()
   # Override CLI arguments with a config file.
-  if args.config_file is not None:
-    with open(args.config_file, "r") as f:
+  if user_args.config_file is not None:
+    with open(user_args.config_file, "r") as f:
       try:
         config: dict = yaml.safe_load(f)
         parser.set_defaults(**config)
@@ -152,6 +151,10 @@ if __name__ == '__main__':
         print(e)
         exit('Error parsing CLI inputs.')
     args = parser.parse_args()
+    # Overwrite args with the user selected ones in the GUI
+    for k, v in vars(user_args).items():
+      if hasattr(args, k):
+          setattr(args, k, v) 
 
   # Load video codec spec.
   try: 
