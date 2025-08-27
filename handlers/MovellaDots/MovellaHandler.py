@@ -39,11 +39,14 @@ from utils.dots_collector_utils import *
 
 from bleak import BleakScanner, BleakClient # type: ignore
 from movella_dot_py.core.sensor import MovellaDOTSensor # type: ignore
-from movella_dot_py.models.data_structures import SensorConfiguration # type: ignore
+from movella_dot_py.models.data_structures import SensorConfiguration, Timestamp, Quaternion, Vector3, MagneticField # type: ignore
 from movella_dot_py.models.enums import OutputRate, FilterProfile, PayloadMode # type: ignore
 import asyncio
 import time
 import types
+
+from functools import partial
+
 
 class DotDataCallback(mdda.XsDotCallback): # type: ignore
   def __init__(self,
@@ -93,6 +96,8 @@ class MovellaFacade:
     self._is_all_discovered_queue = queue.Queue(maxsize=1)
     self._device_mapping = dict(zip(device_mapping.values(), device_mapping.keys()))
     self._mac_mapping = dict(zip(mac_mapping.values(), mac_mapping.keys()))
+    self._device_id_mapping = dict(zip(mac_mapping.values(), device_mapping.values()))
+
     self._discovered_devices: OrderedDict[str, Any] = OrderedDict([(v, None) for v in mac_mapping.values()])
     self._connected_devices: OrderedDict[str, Any] = OrderedDict([(v, None) for v in device_mapping.values()])
     sampling_period = round(1/sampling_rate_hz * 10000)
@@ -129,6 +134,7 @@ class MovellaFacade:
     return future.result()
 
   def initialize(self) -> bool:
+    #pass the notification callback function
     cfg = SensorConfiguration(
       output_rate=getattr(OutputRate, f"RATE_{self._sampling_rate_hz}"),
       filter_profile=getattr(FilterProfile, self._filter_profile.upper()),
@@ -153,6 +159,40 @@ class MovellaFacade:
       missing = [mac for mac, dev in self._discovered_devices.items() if dev is None]
       print(f"Missing: {missing}", flush=True)
       return False
+    
+    def on_packet_received(device_address, packet, mapping): 
+      # data_keys = ("acceleration", "gyroscope", "magnetometer")
+      # no packets until keep_data() is called
+      if self._is_keep_data:
+        device_id: str = mapping.get(str(device_address).replace(":", ""))
+        timestamp = Timestamp.from_bytes(packet[0:4]).microseconds
+        data = {"device_id": device_id,
+              "timestamp": timestamp,
+              "toa_s": get_time(),
+              "acceleration": Vector3.from_bytes(packet[4:16]).to_numpy(),
+              "gyroscope" : Vector3.from_bytes(packet[16:28]).to_numpy(),
+              "magnetometer": MagneticField.from_bytes(packet[28:34]).to_numpy()}
+        self._packet_queue.put({"key": device_id, "data": data, "timestamp": timestamp})
+        # for device_id, sensor in list(self._sensors.items()):
+          # packet = sensor.get_collected_data()
+          # ts = packet.get("timestamps") if packet else None
+          # if ts is not None or ts.size > 0: #type: ignore
+          #   start = self._last_idx.get(device_id, 0)
+          #   end = int(ts.shape[0]) #type: ignore
+          #   for i in range(start, end):
+          #     ts_i = ts[i] #type: ignore
+          #     data = {
+          #       "device_id": device_id,
+          #       "timestamp": ts_i,  
+          #       "toa_s": get_time(),   
+          #     }
+        # for key in data_keys:
+        #   col = packet.get(key)
+        #   if col is not None < col.shape[0]:
+        #     data[key] = col[i]
+        # self._packet_queue.put({"key": device_id, "data": data, "timestamp": ts_i})
+
+            # self._last_idx[device_id] = end
 
     for mac_no_colon, bleak_dev in self._discovered_devices.items():
       joint = self._mac_mapping.get(mac_no_colon) 
@@ -163,23 +203,23 @@ class MovellaFacade:
         continue
 
       try:
-        sensor = MovellaDOTSensor(cfg)
+        sensor = MovellaDOTSensor(partial(on_packet_received, mapping=self._device_id_mapping), cfg)
         sensor.client = BleakClient(bleak_dev.address)
 
         self._run(sensor.client.connect())
+        print("connected")
         sensor.is_connected = True
         sensor._device_address = bleak_dev.address
         sensor._device_name = bleak_dev.name
 
         self._run(sensor.configure_sensor())
-
         self._sensors[device_id] = sensor
         self._connected_devices[device_id] = sensor
         self._last_idx[device_id] = 0
 
         print(f"connected to {mac_no_colon}: {device_id}", flush=True)
-        sensor.data_collector = DotsCollector(sensor.data_collector)
-        sensor.get_collected_data = types.MethodType(lambda self: self.data_collector.get_collected_data(), sensor)
+        # sensor.data_collector = DotsCollector(sensor.data_collector)
+        # sensor.get_collected_data = types.MethodType(lambda self: self.data_collector.get_collected_data(), sensor)
       except Exception as e:
         print(f"failed to connect/configure {bleak_dev.address.upper()}: {e}", flush=True)
         self._connected_devices[device_id] = None
@@ -190,35 +230,9 @@ class MovellaFacade:
     
     if not self._stream():
       return False
-    
-    def _collector_packets():
-      data_keys = ("acceleration", "gyroscope", "magnetometer")
-      while True:
-        # no packets until keep_data() is called
-        if self._is_keep_data:
-          for device_id, sensor in list(self._sensors.items()):
-            packet = sensor.get_collected_data()
-            ts = packet.get("timestamps") if packet else None
-            if ts is not None or ts.size > 0: #type: ignore
-              start = self._last_idx.get(device_id, 0)
-              end = int(ts.shape[0]) #type: ignore
-              for i in range(start, end):
-                ts_i = ts[i] #type: ignore
-                data = {
-                  "device_id": device_id,
-                  "timestamp": ts_i,  
-                  "toa_s": get_time(),   
-                }
-                for key in data_keys:
-                  col = packet.get(key)
-                  if col is not None and i < col.shape[0]:
-                    data[key] = col[i]
-                self._packet_queue.put({"key": device_id, "data": data, "timestamp": ts_i})
 
-              self._last_idx[device_id] = end
-
-    self._collector_thread = threading.Thread(target=_collector_packets, daemon=True)
-    self._collector_thread.start()
+    # self._collector_thread = threading.Thread(target=on_packet_received, daemon=True)
+    # self._collector_thread.start()
 
     def funnel_packets(packet_queue: queue.Queue, timeout: float = 5.0):
       while True:
@@ -279,11 +293,6 @@ class MovellaFacade:
 
 
   def close(self) -> None:
-    try:
-      if hasattr(self, "_collector_thread") and self._collector_thread:
-        self._collector_thread.join(timeout=2.0)
-    except Exception:
-      pass
     try:
       if hasattr(self, "_packet_funneling_thread") and self._packet_funneling_thread:
         self._packet_funneling_thread.join(timeout=2.0)
